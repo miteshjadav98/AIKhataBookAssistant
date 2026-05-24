@@ -1,0 +1,5 @@
+sarvamai
+pyaudio
+playsound==1.2.2
+python-dotenv
+rich

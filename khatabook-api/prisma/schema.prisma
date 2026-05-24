@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Shop {
+  id                    String   @id @default(uuid())
+  shopCode              String   @unique @default(cuid()) // Alphanumeric code for login
+  name                  String
+  interestRate          Float    @default(0) // Example: 2 for 2%
+  defaultCreditDuration Int      @default(30) // in days
+  locale                String   @default("hi") // Language preference (hi, gu, en)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  users              User[]
+  customers          Customer[]
+  suppliers          Supplier[]
+  products           Product[]
+  purchases          Purchase[]
+  sales              SalesTransaction[]
+  inventoryMovements InventoryMovement[]
+  payments           Payment[]
+  expenses           Expense[]
+  invoiceEditLogs    InvoiceEditLog[]
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+model User {
+  id           String   @id @default(uuid())
+  shopId       String   
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id])
+}
+
+model Customer {
+  id                  String    @id @default(uuid())
+  shopId              String    
+  name                String
+  phone               String?
+  email               String?
+  passwordHash        String?
+  gstin               String?
+  billingAddress      String?
+  shippingAddress     String?
+  totalReceivable     Float     @default(0) // Customer Due (Amount To Receive)
+  isTemporaryPassword Boolean   @default(true)
+  passwordUpdatedAt   DateTime?
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  shop              Shop               @relation(fields: [shopId], references: [id])
+  salesTransactions SalesTransaction[]
+  payments          Payment[]
+
+  @@unique([shopId, phone])
+  @@unique([shopId, email])
+}
+
+model Supplier {
+  id              String    @id @default(uuid())
+  shopId          String    
+  name            String
+  phone           String?
+  email           String?
+  gstin           String?
+  billingAddress  String?
+  shippingAddress String?
+  totalPayable    Float     @default(0) // Supplier Due (Amount To Pay)
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  shop      Shop       @relation(fields: [shopId], references: [id])
+  purchases Purchase[]
+  payments  Payment[]
+
+  @@unique([shopId, phone])
+  @@unique([shopId, email])
+}
+
+enum ProductUnit {
+  KG
+  G
+  L
+  ML
+  PIECES
+  DOZEN
+  CARTON
+  PACKET
+}
+
+model Product {
+  id                   String      @id @default(uuid())
+  shopId               String      
+  name                 String
+  sku                  String?
+  barcode              String?
+  category             String?
+  stockQty             Float       @default(0)
+  defaultPurchasePrice Float       @default(0)
+  defaultSellingPrice  Float       @default(0)
+  lowStockThreshold    Float       @default(10)
+  unit                 ProductUnit @default(PIECES)
+  isDeleted            Boolean     @default(false)
+  deletedAt            DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  shop               Shop                @relation(fields: [shopId], references: [id])
+  inventoryMovements InventoryMovement[]
+}
+
+model Purchase {
+  id            String         @id @default(uuid())
+  shopId        String         
+  supplierId    String         
+  invoiceNumber String?
+  items         Json
+  subtotal      Float
+  paidAmount    Float          @default(0)
+  discount      Float          @default(0)
+  dueAmount     Float          @default(0)
+  paymentMode   PaymentMode    @default(CASH)
+  notes         String?
+  lastEditedAt  DateTime?
+  editCount     Int            @default(0)
+  lastEditReason String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model SalesTransaction {
+  id            String      @id @default(uuid())
+  shopId        String      
+  customerId    String      
+  invoiceNumber String?
+  items         Json
+  subtotal      Float
+  paidAmount    Float       @default(0)
+  discount      Float       @default(0)
+  dueAmount     Float       @default(0)
+  paymentMode   PaymentMode @default(CASH)
+  profit        Float       @default(0)
+  notes         String?
+  lastEditedAt  DateTime?
+  editCount     Int         @default(0)
+  lastEditReason String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  shop     Shop     @relation(fields: [shopId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+enum MovementType {
+  PURCHASE
+  SALE
+  RETURN
+  STOCK_ADJUSTMENT
+}
+
+enum ReferenceType {
+  PURCHASE
+  SALE
+  MANUAL
+}
+
+model InventoryMovement {
+  id            String        @id @default(uuid())
+  shopId        String        
+  productId     String        
+  type          MovementType
+  qty           Float
+  beforeQty     Float
+  afterQty      Float
+  referenceType ReferenceType
+  referenceId   String?       // Can reference Purchase or SalesTransaction ID
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  shop    Shop    @relation(fields: [shopId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+}
+
+enum PaymentType {
+  CUSTOMER_PAYMENT
+  SUPPLIER_PAYMENT
+}
+
+enum PaymentMode {
+  CASH
+  ONLINE
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+}
+
+model Payment {
+  id          String      @id @default(uuid())
+  shopId      String      
+  type        PaymentType
+  customerId  String?     
+  supplierId  String?     
+  amount      Float
+  paymentMode PaymentMode
+  notes       String?
+  createdAt   DateTime    @default(now())
+
+  shop     Shop      @relation(fields: [shopId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+model Expense {
+  id          String      @id @default(uuid())
+  shopId      String      
+  amount      Float
+  category    String
+  description String?
+  paymentMode PaymentMode @default(CASH)
+  date        DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id])
+}
+
+model InvoiceEditLog {
+  id             String   @id @default(uuid())
+  invoiceId      String   
+  invoiceType    String   // "SALE" | "PURCHASE"
+  shopId         String   
+  reason         String
+  changesSummary String
+  beforeSnapshot Json
+  afterSnapshot  Json
+  editedAt       DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id])
+}
