@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -24,11 +25,28 @@ class ChatRequest(BaseModel):
     message: str
     token: str
     history: List[Dict[str, str]] = []
+    use_sarvam: bool = True
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/login")
+async def login_endpoint(req: LoginRequest):
+    url = f"{os.getenv('KHATABOOK_API_URL', 'http://localhost:3000')}/auth/login"
+    try:
+        response = requests.post(url, json={"email": req.email, "password": req.password})
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to connect to KhataBook API: {str(e)}")
 
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     if not req.token:
         raise HTTPException(status_code=401, detail="Authentication token required")
+    
+    print(f"\n--- NEW CHAT REQUEST ---")
+    print(f"User Input (STT/Text): {req.message}")
     
     # Reconstruct LangChain message history
     messages = []
@@ -52,15 +70,12 @@ async def chat_endpoint(req: ChatRequest):
         # The agent returns the updated state. The last message is the AI response.
         final_message = result["messages"][-1].content
         
-        # Try to parse the response as JSON (handle markdown codeblocks if present)
+        # Try to parse the response as JSON by extracting the JSON object
         clean_json_str = final_message.strip()
-        if clean_json_str.startswith("```json"):
-            clean_json_str = clean_json_str[7:]
-        if clean_json_str.startswith("```"):
-            clean_json_str = clean_json_str[3:]
-        if clean_json_str.endswith("```"):
-            clean_json_str = clean_json_str[:-3]
-        clean_json_str = clean_json_str.strip()
+        start_idx = clean_json_str.find('{')
+        end_idx = clean_json_str.rfind('}')
+        if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+            clean_json_str = clean_json_str[start_idx:end_idx+1]
         
         try:
             parsed_resp = json.loads(clean_json_str)
@@ -68,9 +83,14 @@ async def chat_endpoint(req: ChatRequest):
             spoken_response = parsed_resp.get("spoken_response", "")
             language_code = parsed_resp.get("language_code", "en-IN")
             
+            print(f"API Visual Response: {visual_response}")
+            print(f"Text Converted to Speech: {spoken_response}")
+            print(f"Language Code: {language_code}")
+            print(f"------------------------\n")
+            
             # Generate Audio via Sarvam AI
             audio_b64 = None
-            if sarvam_client and spoken_response:
+            if req.use_sarvam and sarvam_client and spoken_response:
                 try:
                     tts_response = sarvam_client.text_to_speech.convert(
                         text=spoken_response,
@@ -79,6 +99,7 @@ async def chat_endpoint(req: ChatRequest):
                     )
                     if hasattr(tts_response, 'audios') and tts_response.audios:
                         audio_b64 = tts_response.audios[0]
+                        print(">> Successfully generated Sarvam AI Audio Base64.")
                 except Exception as tts_err:
                     print(f"TTS Error: {tts_err}")
             

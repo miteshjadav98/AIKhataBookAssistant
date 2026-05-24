@@ -16,6 +16,7 @@ const DOM = {
     
     micBtn: document.getElementById('mic-btn'),
     toggleTtsBtn: document.getElementById('toggle-tts-btn'),
+    toggleSarvamBtn: document.getElementById('toggle-sarvam-btn'),
     suggestionChips: document.querySelectorAll('.suggestion-chip')
 };
 
@@ -23,6 +24,7 @@ const DOM = {
 let token = localStorage.getItem('kb_token');
 let chatHistoryList = []; // Array of {role: 'user'|'assistant', content: string}
 let isTtsEnabled = true;
+let useSarvam = true;
 
 // Web Speech API for TTS
 const synth = window.speechSynthesis;
@@ -74,8 +76,8 @@ DOM.loginForm.addEventListener('submit', async (e) => {
     DOM.authError.classList.add('hidden');
 
     try {
-        // Replace with actual NestJS backend URL if different
-        const NESTJS_URL = 'http://localhost:3000/auth/login';
+        // Use relative path to hit the FastAPI proxy which forwards to NestJS
+        const NESTJS_URL = '/api/login';
         
         const response = await fetch(NESTJS_URL, {
             method: 'POST',
@@ -143,7 +145,24 @@ function addMessage(role, content) {
 }
 
 // TTS State
-let currentAudio = null;
+let currentAudio = new Audio();
+let audioUnlocked = false;
+
+// Unlock audio context for mobile browsers on first interaction
+function unlockAudio() {
+    if (audioUnlocked) return;
+    // Tiny silent WAV base64
+    currentAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    const playPromise = currentAudio.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            currentAudio.pause();
+            audioUnlocked = true;
+        }).catch(err => console.log("Audio unlock failed, will try again."));
+    }
+}
+document.body.addEventListener('click', unlockAudio, { once: true });
+document.body.addEventListener('touchstart', unlockAudio, { once: true });
 
 // TTS (Text to Speech)
 DOM.toggleTtsBtn.addEventListener('click', () => {
@@ -152,24 +171,48 @@ DOM.toggleTtsBtn.addEventListener('click', () => {
     if (!isTtsEnabled && currentAudio) {
         currentAudio.pause(); // Stop speaking if turned off
     }
+    if (!isTtsEnabled && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+    }
 });
+
+DOM.toggleSarvamBtn.addEventListener('click', () => {
+    useSarvam = !useSarvam;
+    DOM.toggleSarvamBtn.classList.toggle('active', useSarvam);
+    if (!useSarvam && currentAudio) {
+        currentAudio.pause();
+    }
+});
+
+function speakTextNative(text) {
+    if (!isTtsEnabled || !window.speechSynthesis) return;
+    const cleanText = text.replace(/[*_#`]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const voices = window.speechSynthesis.getVoices();
+    const indianVoice = voices.find(v => v.lang === 'en-IN' || v.name.includes('India'));
+    if (indianVoice) utterance.voice = indianVoice;
+    window.speechSynthesis.speak(utterance);
+}
 
 function playAudioB64(audioB64) {
     if (!isTtsEnabled || !audioB64) return;
     
-    if (currentAudio) {
-        currentAudio.pause();
-    }
+    currentAudio.pause();
     
     // Sarvam AI returns base64 WAV audio
-    const audioSrc = "data:audio/wav;base64," + audioB64;
-    currentAudio = new Audio(audioSrc);
-    currentAudio.play().catch(err => console.error("Audio playback failed:", err));
+    currentAudio.src = "data:audio/wav;base64," + audioB64;
+    currentAudio.play().catch(err => {
+        console.error("Audio playback failed:", err);
+        // Fallback to native if blocked
+        speakTextNative("I found the information, but my audio is blocked. Please check the screen.");
+    });
 }
 
 // API Call
 async function sendMessage(text) {
     if (!text.trim()) return;
+    
+    console.log("Sending Message to API:", text);
     
     // Cancel any ongoing speech
     if (currentAudio) {
@@ -188,7 +231,8 @@ async function sendMessage(text) {
             body: JSON.stringify({
                 message: text,
                 token: token,
-                history: chatHistoryList
+                history: chatHistoryList,
+                use_sarvam: useSarvam
             })
         });
         
@@ -203,6 +247,9 @@ async function sendMessage(text) {
             const aiText = data.response;
             const audioB64 = data.audio_b64;
             
+            console.log("API Visual Response:", aiText);
+            console.log("Audio Received from Sarvam AI:", !!audioB64);
+            
             addMessage('system', aiText);
             
             // Append to local history for context (keep last 10 messages)
@@ -212,6 +259,8 @@ async function sendMessage(text) {
             
             if (audioB64) {
                 playAudioB64(audioB64);
+            } else {
+                speakTextNative(aiText);
             }
         } else {
             addMessage('system', `Error: ${data.detail || 'Failed to process request.'}`);
@@ -249,6 +298,7 @@ if (recognition) {
     
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
+        console.log("Speech-to-Text Input:", transcript);
         DOM.messageInput.value = transcript;
         sendMessage(transcript);
     };
