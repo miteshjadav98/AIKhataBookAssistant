@@ -70,7 +70,7 @@ echo "Installing Python dependencies..."
 echo "Starting AI Assistant with PM2 on port 8000..."
 pm2 delete ai-assistant || true
 # Run uvicorn from the virtual environment
-pm2 start ./venv/bin/python --name "ai-assistant" -- -m uvicorn main:app --host 127.0.0.1 --port 8000
+pm2 start ./venv/bin/python --name "ai-assistant" -- -m uvicorn main:app --host 127.0.0.1 --port 8002
 
 # 5. Build & Run Frontend (Next.js)
 echo "Setting up CRM Frontend (Next.js)..."
@@ -138,7 +138,7 @@ server {
     server_name ai.miteklabs.tech;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:8002;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
