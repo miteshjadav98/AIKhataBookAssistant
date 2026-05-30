@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -132,6 +132,60 @@ export class AuthService {
       console.error('[AuthService.login] ERROR:', error.message || error);
       throw error;
     }
+  }
+
+  /**
+   * Update profile: user name and/or shop name.
+   * Returns updated user info.
+   */
+  async updateProfile(userId: string, shopId: string, data: { name?: string; shopName?: string }) {
+    console.log('[AuthService.updateProfile] Called for userId:', userId, 'data:', data);
+
+    return this.prisma.$transaction(async (tx) => {
+      let updatedUser: any;
+      
+      if (data.name) {
+        updatedUser = await tx.user.update({
+          where: { id: userId },
+          data: { name: data.name },
+          include: { shop: true },
+        });
+      } else {
+        updatedUser = await tx.user.findUnique({
+          where: { id: userId },
+          include: { shop: true },
+        });
+      }
+
+      if (data.shopName) {
+        await tx.shop.update({
+          where: { id: shopId },
+          data: { name: data.shopName },
+        });
+      }
+
+      // Refresh with latest shop data
+      const finalUser = await tx.user.findUnique({
+        where: { id: userId },
+        include: { shop: true },
+      });
+
+      if (!finalUser) {
+        throw new NotFoundException('User not found after update');
+      }
+
+      console.log('[AuthService.updateProfile] Updated successfully');
+
+      return {
+        id: finalUser.id,
+        name: finalUser.name,
+        email: finalUser.email,
+        role: finalUser.role,
+        shopId: finalUser.shopId,
+        shopName: finalUser.shop.name,
+        shopCode: finalUser.shop.shopCode,
+      };
+    });
   }
 
   /**

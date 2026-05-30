@@ -1,10 +1,11 @@
-import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Patch, Body, Req, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterSchema } from './dto/register.dto';
 import { LoginSchema } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -81,6 +82,39 @@ export class AuthController {
       status: 'success',
       message: 'Login successful',
       data: result,
+    };
+  }
+
+  /**
+   * PATCH /auth/profile
+   * Update user name and/or shop name.
+   * Requires authentication.
+   */
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user profile and shop name' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'Mitesh Jadav' },
+        shopName: { type: 'string', example: 'Genz Fast Food' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateProfile(@Req() req: any, @Body() body: { name?: string; shopName?: string }) {
+    const userId = req.user.sub;
+    const shopId = req.user.shopId;
+
+    const updatedUser = await this.authService.updateProfile(userId, shopId, body);
+
+    return {
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: updatedUser,
     };
   }
 }

@@ -73,12 +73,34 @@ export class SalesService {
 
       const dueAmount = subtotal - data.discount - data.paidAmount;
 
-      // 2. Create the Sales Transaction record
+      // 2. Generate Auto Invoice Number if not provided
+      let finalInvoiceNumber = data.invoiceNumber;
+      if (!finalInvoiceNumber) {
+        const year = new Date().getFullYear();
+        const prefix = `INV${year}`;
+        
+        const lastSale = await tx.salesTransaction.findFirst({
+          where: { shopId, invoiceNumber: { startsWith: prefix } },
+          orderBy: { invoiceNumber: 'desc' }
+        });
+        
+        let nextNum = 1;
+        if (lastSale && lastSale.invoiceNumber) {
+          const numPart = lastSale.invoiceNumber.replace(prefix, '');
+          const parsed = parseInt(numPart, 10);
+          if (!isNaN(parsed)) {
+            nextNum = parsed + 1;
+          }
+        }
+        finalInvoiceNumber = `${prefix}${nextNum.toString().padStart(4, '0')}`;
+      }
+
+      // 3. Create the Sales Transaction record
       const salesTx = await tx.salesTransaction.create({
         data: {
           shopId,
           customerId: data.customerId,
-          invoiceNumber: data.invoiceNumber,
+          invoiceNumber: finalInvoiceNumber,
           items: salesItems,
           subtotal,
           discount: data.discount,
@@ -90,7 +112,7 @@ export class SalesService {
         },
       });
 
-      // 3. Create Inventory Movements with proper referenceId
+      // 4. Create Inventory Movements with proper referenceId
       for (const movement of inventoryMovementsData) {
         await tx.inventoryMovement.create({
           data: {
@@ -100,7 +122,7 @@ export class SalesService {
         });
       }
 
-      // 3. Update Customer Due (Receivable)
+      // 5. Update Customer Due (Receivable)
       if (dueAmount !== 0) {
         await tx.customer.update({
           where: { id: data.customerId },

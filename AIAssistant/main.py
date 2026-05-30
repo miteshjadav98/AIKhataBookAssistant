@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -14,6 +15,14 @@ from sarvamai import SarvamAI
 
 app = FastAPI(title="KhataBook AI Assistant")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Create the agent instance
 agent = create_shopkeeper_agent()
 
@@ -24,7 +33,9 @@ sarvam_client = SarvamAI(api_subscription_key=sarvam_api_key) if sarvam_api_key 
 class ChatRequest(BaseModel):
     message: str
     token: str
-    history: List[Dict[str, str]] = []
+    thread_id: str
+    user_name: str = "Shopkeeper"
+    history: List[Dict[str, str]] = [] # Kept for backwards compatibility, but not used by backend anymore
     use_sarvam: bool = True
 
 class LoginRequest(BaseModel):
@@ -44,27 +55,23 @@ async def login_endpoint(req: LoginRequest):
 async def chat_endpoint(req: ChatRequest):
     if not req.token:
         raise HTTPException(status_code=401, detail="Authentication token required")
+    if not req.thread_id:
+        raise HTTPException(status_code=400, detail="Thread ID required for memory")
     
     print(f"\n--- NEW CHAT REQUEST ---")
     print(f"User Input (STT/Text): {req.message}")
-    
-    # Reconstruct LangChain message history
-    messages = []
-    for msg in req.history:
-        if msg.get("role") == "user":
-            messages.append(HumanMessage(content=msg.get("content")))
-        elif msg.get("role") == "assistant":
-            messages.append(AIMessage(content=msg.get("content")))
+    print(f"User Name: {req.user_name}")
+    print(f"Thread ID: {req.thread_id}")
             
-    # Add the current user message
-    messages.append(HumanMessage(content=req.message))
+    # Configure the tool calls with the JWT token and set the thread_id for LangGraph MemorySaver
+    config = RunnableConfig(configurable={"token": req.token, "thread_id": req.thread_id})
     
-    # Configure the tool calls with the JWT token
-    config = RunnableConfig(configurable={"token": req.token})
+    # Inject user name into the message text so the AI knows who it is talking to without modifying the global system prompt
+    augmented_message = f"[{req.user_name}]: {req.message}"
     
     try:
-        # Invoke the LangGraph agent
-        state = {"messages": messages}
+        # Invoke the LangGraph agent with just the new message, memory handles the rest!
+        state = {"messages": [HumanMessage(content=augmented_message)]}
         result = agent.invoke(state, config=config)
         
         # The agent returns the updated state. The last message is the AI response.
@@ -80,10 +87,13 @@ async def chat_endpoint(req: ChatRequest):
         try:
             parsed_resp = json.loads(clean_json_str)
             visual_response = parsed_resp.get("visual_response", final_message)
+            visual_type = parsed_resp.get("visual_type")
+            data = parsed_resp.get("data")
             spoken_response = parsed_resp.get("spoken_response", "")
             language_code = parsed_resp.get("language_code", "en-IN")
             
             print(f"API Visual Response: {visual_response}")
+            print(f"API Visual Type: {visual_type}")
             print(f"Text Converted to Speech: {spoken_response}")
             print(f"Language Code: {language_code}")
             print(f"------------------------\n")
@@ -105,6 +115,8 @@ async def chat_endpoint(req: ChatRequest):
             
             return {
                 "response": visual_response,
+                "visual_type": visual_type,
+                "data": data,
                 "audio_b64": audio_b64,
                 "language": language_code
             }

@@ -3,6 +3,7 @@ import requests
 from datetime import datetime, date
 from langchain_core.tools import tool
 from langchain_core.runnables.config import RunnableConfig
+from prompt_utils import getprompt
 
 BASE_URL = os.getenv("KHATABOOK_API_URL", "http://localhost:3000")
 
@@ -10,409 +11,155 @@ def get_headers(config: RunnableConfig):
     token = config.get("configurable", {}).get("token", "")
     return {"Authorization": f"Bearer {token}"} if token else {}
 
+def logged_request(method, url, **kwargs):
+    print(f"\n--- [Tool API] {method.upper()} {url} ---")
+    if "json" in kwargs:
+        print(f"Payload: {kwargs['json']}")
+    resp = requests.request(method, url, **kwargs)
+    print(f"Status: {resp.status_code}")
+    try:
+        print(f"Response: {resp.json()}")
+    except Exception:
+        print(f"Response Text: {resp.text}")
+    print("--------------------------------------\n")
+    return resp
+
+def dynamic_prompt(key):
+    """Decorator to inject a prompt string dynamically as the tool's description."""
+    def decorator(func):
+        # We use @tool(description=...) so LangChain picks it up reliably.
+        # Alternatively we can set func.__doc__, but description= is safer.
+        return tool(func.__name__, description=getprompt(key))(func)
+    return decorator
+
 # ==========================================
-# CUSTOMERS (ADMIN)
+# CUSTOMER TOOL
 # ==========================================
 
-@tool
-def add_customer(customer_data: dict, config: RunnableConfig) -> dict:
-    """Add a new customer to the shop. customer_data should be a dict with fields like 'name', 'phone', etc."""
-    print(f"\n---> [TOOL CALLED] add_customer")
-    url = f"{BASE_URL}/customers"
-    response = requests.post(url, json=customer_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_customers(config: RunnableConfig) -> dict:
-    """Gets a list of all customers in the shop."""
-    print(f"\n---> [TOOL CALLED] get_all_customers")
-    url = f"{BASE_URL}/customers"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_customer_by_id(customer_id: str, config: RunnableConfig) -> dict:
-    """Gets details of a single customer by their ID."""
-    print(f"\n---> [TOOL CALLED] get_customer_by_id")
-    url = f"{BASE_URL}/customers/{customer_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def update_customer(customer_id: str, customer_data: dict, config: RunnableConfig) -> dict:
-    """Updates an existing customer. customer_data is a dict containing the fields to update."""
-    print(f"\n---> [TOOL CALLED] update_customer")
-    url = f"{BASE_URL}/customers/{customer_id}"
-    response = requests.put(url, json=customer_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def delete_customer(customer_id: str, config: RunnableConfig) -> dict:
-    """Soft deletes a customer by ID."""
-    print(f"\n---> [TOOL CALLED] delete_customer")
-    url = f"{BASE_URL}/customers/{customer_id}"
-    response = requests.delete(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def search_customer(name: str, config: RunnableConfig) -> dict:
-    """Searches for a customer by name and returns their details including customer ID."""
-    print(f"\n---> [TOOL CALLED] search_customer")
-    url = f"{BASE_URL}/customers"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code != 200:
-        return {"error": f"Failed to fetch customers: {response.text}"}
+@dynamic_prompt("customer_tool")
+def customer_tool(action: str, customer_id: str = None, name_search: str = None, customer_data: dict = None, config: RunnableConfig = None) -> dict:
+    if action == "get_all":
+        return logged_request("get", f"{BASE_URL}/customers", headers=get_headers(config)).json()
+    elif action == "get_by_id" and customer_id:
+        return logged_request("get", f"{BASE_URL}/customers/{customer_id}", headers=get_headers(config)).json()
+    elif action == "add" and customer_data:
+        return logged_request("post", f"{BASE_URL}/customers", json=customer_data, headers=get_headers(config)).json()
+    elif action == "update" and customer_id and customer_data:
+        return logged_request("put", f"{BASE_URL}/customers/{customer_id}", json=customer_data, headers=get_headers(config)).json()
+    elif action == "delete" and customer_id:
+        return logged_request("delete", f"{BASE_URL}/customers/{customer_id}", headers=get_headers(config)).json()
+    elif action == "search" and name_search:
+        resp = logged_request("get", f"{BASE_URL}/customers", headers=get_headers(config))
+        if resp.status_code != 200:
+            return {"error": f"Failed to fetch: {resp.text}"}
+        matches = [c for c in resp.json().get("data", []) if name_search.lower() in c.get("name", "").lower()]
+        return {"customers": matches} if matches else {"error": "Not found"}
+    elif action == "get_ledger" and customer_id:
+        resp = logged_request("get", f"{BASE_URL}/sales", headers=get_headers(config))
+        if resp.status_code == 200:
+            return {"sales": [s for s in resp.json().get("data", []) if s.get("customerId") == customer_id]}
+        return {"error": "Failed to fetch"}
     
-    customers = response.json().get("data", [])
-    matches = [c for c in customers if name.lower() in c.get("name", "").lower()]
-    if not matches:
-        return {"error": f"No customer found with name: {name}"}
-    return {"customers": matches}
+    return {"error": "Invalid action or missing parameters."}
 
 # ==========================================
-# CUSTOMERS (SELF-SERVE)
+# INVENTORY TOOL
 # ==========================================
 
-@tool
-def get_my_balance(config: RunnableConfig) -> dict:
-    """Gets the outstanding balance (Bakaya) for the logged-in customer."""
-    print(f"\n---> [TOOL CALLED] get_my_balance")
-    url = f"{BASE_URL}/customers/me/balance"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_my_ledger(config: RunnableConfig) -> dict:
-    """Gets the ledger (Sales and Payments) for the logged-in customer."""
-    print(f"\n---> [TOOL CALLED] get_my_ledger")
-    url = f"{BASE_URL}/customers/me/ledger"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_my_sale(sale_id: str, config: RunnableConfig) -> dict:
-    """Gets a specific sale invoice for the logged-in customer."""
-    print(f"\n---> [TOOL CALLED] get_my_sale")
-    url = f"{BASE_URL}/customers/me/sale/{sale_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_my_shops(config: RunnableConfig) -> dict:
-    """Gets all shops where the logged-in account is registered."""
-    print(f"\n---> [TOOL CALLED] get_my_shops")
-    url = f"{BASE_URL}/customers/me/shops"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
+@dynamic_prompt("inventory_tool")
+def inventory_tool(action: str, product_id: str = None, product_data: dict = None, config: RunnableConfig = None) -> dict:
+    if action == "get_all":
+        return logged_request("get", f"{BASE_URL}/products", headers=get_headers(config)).json()
+    elif action == "get_by_id" and product_id:
+        return logged_request("get", f"{BASE_URL}/products/{product_id}", headers=get_headers(config)).json()
+    elif action == "add" and product_data:
+        return logged_request("post", f"{BASE_URL}/products", json=product_data, headers=get_headers(config)).json()
+    elif action == "update" and product_id and product_data:
+        return logged_request("put", f"{BASE_URL}/products/{product_id}", json=product_data, headers=get_headers(config)).json()
+    elif action == "delete" and product_id:
+        return logged_request("delete", f"{BASE_URL}/products/{product_id}", headers=get_headers(config)).json()
+    elif action == "get_low_stock":
+        resp = logged_request("get", f"{BASE_URL}/products", headers=get_headers(config))
+        if resp.status_code == 200:
+            return {"products": [p for p in resp.json().get("data", []) if p.get("stockQty", 0) < 10]}
+        return {"error": "Failed to fetch"}
+    
+    return {"error": "Invalid action or missing parameters."}
 
 # ==========================================
-# PRODUCTS
+# SUPPLIER TOOL
 # ==========================================
 
-@tool
-def add_product(product_data: dict, config: RunnableConfig) -> dict:
-    """Add a new product to the shop. product_data should include 'name', 'price', etc."""
-    print(f"\n---> [TOOL CALLED] add_product")
-    url = f"{BASE_URL}/products"
-    response = requests.post(url, json=product_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_products(config: RunnableConfig) -> dict:
-    """List all products in the shop."""
-    print(f"\n---> [TOOL CALLED] get_all_products")
-    url = f"{BASE_URL}/products"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_product_by_id(product_id: str, config: RunnableConfig) -> dict:
-    """Get a single product with its inventory history."""
-    print(f"\n---> [TOOL CALLED] get_product_by_id")
-    url = f"{BASE_URL}/products/{product_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def update_product(product_id: str, product_data: dict, config: RunnableConfig) -> dict:
-    """Update a product."""
-    print(f"\n---> [TOOL CALLED] update_product")
-    url = f"{BASE_URL}/products/{product_id}"
-    response = requests.put(url, json=product_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def delete_product(product_id: str, config: RunnableConfig) -> dict:
-    """Delete a product."""
-    print(f"\n---> [TOOL CALLED] delete_product")
-    url = f"{BASE_URL}/products/{product_id}"
-    response = requests.delete(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_low_stock_products(config: RunnableConfig) -> list:
-    """Gets products that are low in stock (qty < 10)."""
-    print(f"\n---> [TOOL CALLED] get_low_stock_products")
-    url = f"{BASE_URL}/products"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code == 200:
-        products = response.json().get("data", [])
-        low_stock = [p for p in products if p.get("stockQty", 0) < 10]
-        return low_stock
-    return []
+@dynamic_prompt("supplier_tool")
+def supplier_tool(action: str, supplier_id: str = None, name_search: str = None, supplier_data: dict = None, config: RunnableConfig = None) -> dict:
+    if action == "get_all":
+        return logged_request("get", f"{BASE_URL}/supplier", headers=get_headers(config)).json()
+    elif action == "get_by_id" and supplier_id:
+        return logged_request("get", f"{BASE_URL}/supplier/{supplier_id}", headers=get_headers(config)).json()
+    elif action == "add" and supplier_data:
+        return logged_request("post", f"{BASE_URL}/supplier", json=supplier_data, headers=get_headers(config)).json()
+    elif action == "search" and name_search:
+        resp = logged_request("get", f"{BASE_URL}/supplier", headers=get_headers(config))
+        if resp.status_code != 200:
+            return {"error": f"Failed to fetch: {resp.text}"}
+        matches = [s for s in resp.json().get("data", []) if name_search.lower() in s.get("name", "").lower()]
+        return {"suppliers": matches} if matches else {"error": "Not found"}
+    elif action == "get_ledger" and supplier_id:
+        return logged_request("get", f"{BASE_URL}/supplier/{supplier_id}/ledger", headers=get_headers(config)).json()
+    
+    return {"error": "Invalid action or missing parameters."}
 
 # ==========================================
-# SUPPLIERS
+# INVOICE TOOL (Sales & Purchases)
 # ==========================================
 
-@tool
-def add_supplier(supplier_data: dict, config: RunnableConfig) -> dict:
-    """Add a new supplier.
-    supplier_data MUST be a JSON object with this exact schema:
-    {
-        "name": "Supplier Name",
-        "phone": "Phone number (optional)",
-        "email": "Email (optional)",
-        "gstin": "GSTIN (optional)",
-        "billingAddress": "Address (optional)"
-    }
-    """
-    print(f"\n---> [TOOL CALLED] add_supplier")
-    url = f"{BASE_URL}/supplier"
-    response = requests.post(url, json=supplier_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_suppliers(config: RunnableConfig) -> dict:
-    """List all suppliers."""
-    print(f"\n---> [TOOL CALLED] get_all_suppliers")
-    url = f"{BASE_URL}/supplier"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_supplier_by_id(supplier_id: str, config: RunnableConfig) -> dict:
-    """Get a single supplier by ID."""
-    print(f"\n---> [TOOL CALLED] get_supplier_by_id")
-    url = f"{BASE_URL}/supplier/{supplier_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def search_supplier(name: str, config: RunnableConfig) -> dict:
-    """Searches for a supplier by name."""
-    print(f"\n---> [TOOL CALLED] search_supplier")
-    url = f"{BASE_URL}/supplier"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code != 200:
-        return {"error": f"Failed to fetch suppliers: {response.text}"}
-    suppliers = response.json().get("data", [])
-    matches = [s for s in suppliers if name.lower() in s.get("name", "").lower()]
-    if not matches:
-        return {"error": f"No supplier found with name: {name}"}
-    return {"suppliers": matches}
-
-@tool
-def get_supplier_ledger(supplier_id: str, config: RunnableConfig) -> dict:
-    """Gets the ledger for a specific supplier by ID."""
-    print(f"\n---> [TOOL CALLED] get_supplier_ledger")
-    url = f"{BASE_URL}/supplier/{supplier_id}/ledger"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
+@dynamic_prompt("invoice_tool")
+def invoice_tool(action: str, type: str, invoice_id: str = None, invoice_data: dict = None, config: RunnableConfig = None) -> dict:
+    endpoint = "/sales" if type == "sale" else "/purchase"
+    
+    if action == "get_all":
+        return logged_request("get", f"{BASE_URL}{endpoint}", headers=get_headers(config)).json()
+    elif action == "get_by_id" and invoice_id:
+        return logged_request("get", f"{BASE_URL}{endpoint}/{invoice_id}", headers=get_headers(config)).json()
+    elif action == "get_todays":
+        resp = logged_request("get", f"{BASE_URL}{endpoint}", headers=get_headers(config))
+        if resp.status_code == 200:
+            today_str = date.today().isoformat()
+            data = resp.json().get("data", [])
+            return {"invoices": [i for i in data if i.get("createdAt", "").startswith(today_str)]}
+        return {"error": "Failed to fetch"}
+    elif action == "add" and invoice_data:
+        return logged_request("post", f"{BASE_URL}{endpoint}", json=invoice_data, headers=get_headers(config)).json()
+    elif action == "update" and invoice_id and invoice_data and type == "sale":
+        return logged_request("put", f"{BASE_URL}/sales/{invoice_id}", json=invoice_data, headers=get_headers(config)).json()
+    elif action == "update" and type == "purchase":
+        return {"error": "Purchases cannot be updated in the current API implementation."}
+    
+    return {"error": "Invalid action or missing parameters."}
 
 # ==========================================
-# PURCHASES
+# PAYMENT TOOL
 # ==========================================
 
-@tool
-def add_purchase(purchase_data: dict, config: RunnableConfig) -> dict:
-    """Add a new purchase invoice.
-    purchase_data MUST be a JSON object with this exact schema:
-    {
-        "supplierId": "UUID of the supplier",
-        "invoiceNumber": "Invoice number string (optional)",
-        "items": [
-            {
-                "productId": "UUID of the product",
-                "qty": number,
-                "purchasePrice": number,
-                "sellingPrice": number
-            }
-        ],
-        "subtotal": number,
-        "paidAmount": number,
-        "discount": number,
-        "paymentMode": "CASH" | "ONLINE" | "BANK_TRANSFER" | "CHEQUE",
-        "notes": "Optional notes"
-    }
-    """
-    print(f"\n---> [TOOL CALLED] add_purchase")
-    url = f"{BASE_URL}/purchase"
-    response = requests.post(url, json=purchase_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_purchases(config: RunnableConfig) -> dict:
-    """Get all purchase history."""
-    print(f"\n---> [TOOL CALLED] get_all_purchases")
-    url = f"{BASE_URL}/purchase"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_purchase_by_id(purchase_id: str, config: RunnableConfig) -> dict:
-    """Get a single purchase by ID."""
-    print(f"\n---> [TOOL CALLED] get_purchase_by_id")
-    url = f"{BASE_URL}/purchase/{purchase_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_purchase_history(config: RunnableConfig) -> list:
-    """Gets the history of all purchase invoices."""
-    print(f"\n---> [TOOL CALLED] get_purchase_history")
-    url = f"{BASE_URL}/purchase"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code == 200:
-        return response.json().get("data", [])
-    return []
+@dynamic_prompt("payment_tool")
+def payment_tool(action: str, payment_data: dict = None, config: RunnableConfig = None) -> dict:
+    if action == "get_all":
+        return logged_request("get", f"{BASE_URL}/payment", headers=get_headers(config)).json()
+    elif action == "add" and payment_data:
+        return logged_request("post", f"{BASE_URL}/payment", json=payment_data, headers=get_headers(config)).json()
+    
+    return {"error": "Invalid action or missing parameters."}
 
 # ==========================================
-# SALES
+# ANALYTICS TOOL
 # ==========================================
 
-@tool
-def add_sale(sale_data: dict, config: RunnableConfig) -> dict:
-    """Add a new sales invoice.
-    sale_data MUST be a JSON object with this exact schema:
-    {
-        "customerId": "UUID of the customer",
-        "invoiceNumber": "Invoice number string (optional)",
-        "items": [
-            {
-                "productId": "UUID of the product",
-                "qty": number,
-                "sellingPrice": number
-            }
-        ],
-        "paidAmount": number,
-        "discount": number,
-        "paymentMode": "CASH" | "ONLINE" | "BANK_TRANSFER" | "CHEQUE",
-        "notes": "Optional notes"
-    }
-    """
-    print(f"\n---> [TOOL CALLED] add_sale")
-    url = f"{BASE_URL}/sales"
-    response = requests.post(url, json=sale_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_sales(config: RunnableConfig) -> dict:
-    """Get all sales."""
-    print(f"\n---> [TOOL CALLED] get_all_sales")
-    url = f"{BASE_URL}/sales"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_sale_by_id(sale_id: str, config: RunnableConfig) -> dict:
-    """Get a single sale by ID."""
-    print(f"\n---> [TOOL CALLED] get_sale_by_id")
-    url = f"{BASE_URL}/sales/{sale_id}"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def update_sale(sale_id: str, sale_data: dict, config: RunnableConfig) -> dict:
-    """Update an existing sale invoice.
-    sale_data MUST be a JSON object with this exact schema:
-    {
-        "invoiceNumber": "Invoice number string",
-        "discount": number (updated discount),
-        "notes": "Updated notes",
-        "reason": "MANDATORY string explaining the reason for this edit (e.g. 'Corrected discount')"
-    }
-    """
-    print(f"\n---> [TOOL CALLED] update_sale")
-    url = f"{BASE_URL}/sales/{sale_id}"
-    response = requests.put(url, json=sale_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_sale_edit_history(sale_id: str, config: RunnableConfig) -> dict:
-    """Get the edit history of a sale."""
-    print(f"\n---> [TOOL CALLED] get_sale_edit_history")
-    url = f"{BASE_URL}/sales/{sale_id}/edit-history"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_todays_sales(config: RunnableConfig) -> list:
-    """Gets all sales transactions for today."""
-    print(f"\n---> [TOOL CALLED] get_todays_sales")
-    url = f"{BASE_URL}/sales"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code == 200:
-        sales = response.json().get("data", [])
-        today_str = date.today().isoformat()
-        today_sales = [s for s in sales if s.get("createdAt", "").startswith(today_str)]
-        return today_sales
-    return []
-
-@tool
-def get_customer_invoices(customer_id: str, config: RunnableConfig) -> list:
-    """Gets all invoices for a specific customer by ID."""
-    print(f"\n---> [TOOL CALLED] get_customer_invoices")
-    url = f"{BASE_URL}/sales"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code == 200:
-        sales = response.json().get("data", [])
-        return [s for s in sales if s.get("customerId") == customer_id]
-    return []
-
-@tool
-def get_customer_ledger(customer_id: str, config: RunnableConfig) -> dict:
-    """Gets the ledger (sales and payments) for a specific customer by ID."""
-    print(f"\n---> [TOOL CALLED] get_customer_ledger")
-    url = f"{BASE_URL}/sales"
-    response = requests.get(url, headers=get_headers(config))
-    if response.status_code != 200:
-        return {"error": f"Failed to fetch sales: {response.text}"}
-    sales = response.json().get("data", [])
-    customer_sales = [s for s in sales if s.get("customerId") == customer_id]
-    return {"sales_history": customer_sales}
-
-# ==========================================
-# PAYMENTS
-# ==========================================
-
-@tool
-def add_payment(payment_data: dict, config: RunnableConfig) -> dict:
-    """Add a new payment."""
-    print(f"\n---> [TOOL CALLED] add_payment")
-    url = f"{BASE_URL}/payment"
-    response = requests.post(url, json=payment_data, headers=get_headers(config))
-    return response.json()
-
-@tool
-def get_all_payments(config: RunnableConfig) -> dict:
-    """Get all payments."""
-    print(f"\n---> [TOOL CALLED] get_all_payments")
-    url = f"{BASE_URL}/payment"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
-
-# ==========================================
-# DASHBOARD
-# ==========================================
-
-@tool
-def get_dashboard(config: RunnableConfig) -> dict:
-    """Gets the shop's main dashboard metrics: totalDue, totalCollected, overdueAmount, monthlyRevenue, totalCustomers, customersWithDue."""
-    print(f"\n---> [TOOL CALLED] get_dashboard")
-    url = f"{BASE_URL}/dashboard"
-    response = requests.get(url, headers=get_headers(config))
-    return response.json()
+@dynamic_prompt("analytics_tool")
+def analytics_tool(action: str, config: RunnableConfig = None) -> dict:
+    if action == "get_dashboard":
+        return logged_request("get", f"{BASE_URL}/dashboard", headers=get_headers(config)).json()
+    
+    return {"error": "Invalid action."}
 
 # ==========================================
 # REGISTRY
@@ -420,11 +167,10 @@ def get_dashboard(config: RunnableConfig) -> dict:
 
 def get_all_tools():
     return [
-        add_customer, get_all_customers, get_customer_by_id, update_customer, delete_customer, search_customer,
-        get_my_balance, get_my_ledger, get_my_sale, get_my_shops,
-        add_product, get_all_products, get_product_by_id, update_product, delete_product, get_low_stock_products,
-        add_supplier, get_all_suppliers, get_supplier_by_id, search_supplier, get_supplier_ledger,
-        add_purchase, get_all_purchases, get_purchase_by_id, get_purchase_history,
-        add_sale, get_all_sales, get_sale_by_id, update_sale, get_sale_edit_history, get_todays_sales, get_customer_invoices, get_customer_ledger,
-        add_payment, get_all_payments, get_dashboard
+        customer_tool,
+        inventory_tool,
+        supplier_tool,
+        invoice_tool,
+        payment_tool,
+        analytics_tool
     ]
