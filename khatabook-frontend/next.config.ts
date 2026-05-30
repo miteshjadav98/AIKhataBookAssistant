@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/ai-api/:path*",
-        destination: "http://localhost:8000/:path*", // Proxy assistant requests
+        destination: "http://localhost:8002/:path*", // Proxy assistant requests
       },
     ];
   },
