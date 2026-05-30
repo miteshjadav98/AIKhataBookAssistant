@@ -70,7 +70,7 @@ echo "Installing Python dependencies..."
 echo "Starting AI Assistant with PM2 on port 8000..."
 pm2 delete ai-assistant || true
 # Run uvicorn from the virtual environment
-pm2 start ./venv/bin/uvicorn --name "ai-assistant" -- main:app --host 127.0.0.1 --port 8000
+pm2 start ./venv/bin/python --name "ai-assistant" -- -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 # 5. Build & Run Frontend (Next.js)
 echo "Setting up CRM Frontend (Next.js)..."
