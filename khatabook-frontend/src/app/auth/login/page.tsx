@@ -56,7 +56,7 @@ export default function LoginPage() {
 
         {error && <div className={styles.error}>{error}</div>}
 
-        <form className={styles.form} onSubmit={handleLogin}>
+        <form className={styles.form} onSubmit={handleLogin} suppressHydrationWarning>
           <div className={styles.inputGroup}>
             <label className={styles.label} htmlFor="email">Email</label>
             <input

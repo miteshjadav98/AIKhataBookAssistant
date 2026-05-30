@@ -75,7 +75,9 @@ export default function AIOperatingSystem() {
         setInput(prev => prev ? `${prev} ${transcript}` : transcript);
       };
       recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+          console.error("Speech recognition error", event.error);
+        }
         setIsRecording(false);
       };
       recognitionRef.current.onend = () => {
@@ -98,11 +100,38 @@ export default function AIOperatingSystem() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
       recognitionRef.current?.stop();
     } else {
-      recognitionRef.current?.start();
+      // Mobile audio unlock for voice inputs (Must be synchronous!)
+      if (audioRef.current) {
+        try {
+          audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.then(() => {
+              if (audioRef.current) audioRef.current.pause();
+            }).catch(() => {});
+          }
+        } catch (e) {}
+      }
+
+      // Force microphone permission prompt if it's missing (fixes audio-capture error on mobile)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.error("Mic permission denied", err);
+        alert("Microphone access denied! Please allow microphone permissions in your phone's browser settings (Site Settings -> Microphone) to use voice input.");
+        return;
+      }
+
+      try {
+        recognitionRef.current?.start();
+      } catch(e) {
+        console.error("Failed to start recognition:", e);
+      }
     }
   };
 
@@ -135,7 +164,20 @@ export default function AIOperatingSystem() {
         threadIdRef.current = uuidv4();
     }
 
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      // Mobile Safari/Chrome Autoplay Hack: Unlock the audio element during the user tap event
+      // by playing a tiny silent base64 wav file and immediately pausing it.
+      try {
+        audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            if (audioRef.current) audioRef.current.pause();
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     
     // Clear synchronously to prevent onend from double-sending
@@ -353,7 +395,7 @@ export default function AIOperatingSystem() {
         >
           <i className="fa-solid fa-microphone" style={{ fontSize: '1.5rem' }}></i>
         </button>
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} style={{ flex: 1, display: 'flex', gap: '1rem' }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} suppressHydrationWarning style={{ flex: 1, display: 'flex', gap: '1rem' }}>
           <input 
             type="text" 
             value={input}
