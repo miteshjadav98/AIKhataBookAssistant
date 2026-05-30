@@ -140,6 +140,7 @@ export default function AIOperatingSystem() {
     threadIdRef.current = uuidv4(); // Generate new thread id to reset backend memory
     if (audioRef.current) audioRef.current.pause();
     if (window.speechSynthesis) window.speechSynthesis.cancel();
+    router.push('/dashboard');
   };
 
   const playAudioB64 = (audioB64: string) => {
