@@ -208,8 +208,12 @@ export default function AIOperatingSystem() {
     const token = localStorage.getItem("token");
     
     try {
-      // Using proxied path /ai-api for the FastAPI AI server
-      const response = await fetch("/ai-api/api/chat", {
+      // Use direct URL in production to avoid Next.js proxy timeouts (socket hang up)
+      const AI_URL = window.location.hostname === 'localhost' 
+        ? "/ai-api/api/chat" 
+        : "https://ai.miteklabs.tech/api/chat";
+
+      const response = await fetch(AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
