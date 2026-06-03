@@ -61,32 +61,10 @@ export default function AIOperatingSystem() {
     
     audioRef.current = new Audio();
     
-    // Setup Speech Recognition
+    // Check for Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-IN';
-      
-      recognitionRef.current.onstart = () => setIsRecording(true);
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(prev => prev ? `${prev} ${transcript}` : transcript);
-      };
-      recognitionRef.current.onerror = (event: any) => {
-        if (event.error !== 'aborted' && event.error !== 'no-speech') {
-          console.error("Speech recognition error", event.error);
-        }
-        setIsRecording(false);
-      };
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-        // Auto-send when the browser naturally stops listening (silence detected)
-        if (inputRef.current.trim()) {
-          handleSend(inputRef.current);
-        }
-      };
+      // We will initialize it inside toggleRecording to fix mobile browser reuse issues
     }
   }, [router]);
 
@@ -102,7 +80,10 @@ export default function AIOperatingSystem() {
 
   const toggleRecording = async () => {
     if (isRecording) {
-      recognitionRef.current?.stop();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsRecording(false);
     } else {
       // Mobile audio unlock for voice inputs (Must be synchronous!)
       if (audioRef.current) {
@@ -128,9 +109,45 @@ export default function AIOperatingSystem() {
       }
 
       try {
-        recognitionRef.current?.start();
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
+        if (recognitionRef.current) {
+            recognitionRef.current.onend = null;
+            recognitionRef.current.onerror = null;
+            recognitionRef.current.onresult = null;
+            try { recognitionRef.current.abort(); } catch(e) {}
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = sttLang;
+        
+        recognition.onstart = () => setIsRecording(true);
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setInput(prev => prev ? `${prev} ${transcript}` : transcript);
+        };
+        recognition.onerror = (event: any) => {
+          if (event.error !== 'aborted' && event.error !== 'no-speech') {
+            console.error("Speech recognition error", event.error);
+          }
+          setIsRecording(false);
+        };
+        recognition.onend = () => {
+          setIsRecording(false);
+          // Auto-send when the browser naturally stops listening (silence detected)
+          if (inputRef.current.trim()) {
+            handleSend(inputRef.current);
+          }
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
       } catch(e) {
         console.error("Failed to start recognition:", e);
+        setIsRecording(false);
       }
     }
   };
@@ -256,15 +273,15 @@ export default function AIOperatingSystem() {
   return (
     <div className={`page-container ${theme === "light" ? "light-theme" : ""}`} style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: 0, backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header className="glass-panel" style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 0, borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <header className="glass-panel ai-header" style={{ padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 0, borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="ai-title-container">
           <div style={{ fontSize: '2rem', cursor: 'pointer' }} onClick={() => router.push('/workspace')}>⬅️</div>
-          <div>
+          <div className="ai-title">
             <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>AI Khatabook Assistant</h2>
             <span style={{ fontSize: '0.8rem', color: '#10b981' }}>● Online Copilot</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div className="ai-header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button 
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="icon-btn"
@@ -299,7 +316,7 @@ export default function AIOperatingSystem() {
             }}
             title="Toggle Voice & Sarvam AI"
           >
-            <i className={`fa-solid ${ttsEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i> TTS {ttsEnabled ? 'ON' : 'OFF'}
+            <i className={`fa-solid ${ttsEnabled ? 'fa-volume-high' : 'fa-volume-xmark'}`}></i> <span className="hide-mobile">TTS {ttsEnabled ? 'ON' : 'OFF'}</span>
           </button>
           <button 
             onClick={clearChat}
@@ -307,7 +324,7 @@ export default function AIOperatingSystem() {
             style={{ color: '#ef4444' }}
             title="Clear Chat & Reset Memory"
           >
-            <i className="fa-solid fa-trash"></i> End Chat
+            <i className="fa-solid fa-trash"></i> <span className="hide-mobile">End Chat</span>
           </button>
         </div>
       </header>
@@ -355,7 +372,7 @@ export default function AIOperatingSystem() {
       </main>
 
       {/* Input Area */}
-      <footer className="glass-panel" style={{ padding: '1.5rem', borderRadius: 0, display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <footer className="glass-panel ai-footer" style={{ padding: '1.5rem', borderRadius: 0, display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <select 
           value={sttLang} 
           onChange={(e) => setSttLang(e.target.value)}
@@ -377,6 +394,7 @@ export default function AIOperatingSystem() {
         <button 
           onClick={toggleRecording}
           title={isRecording ? "Stop Listening" : "Start Voice Input"}
+          className="ai-mic-btn"
           style={{ 
             borderRadius: '50%', 
             width: '60px', 
@@ -412,8 +430,8 @@ export default function AIOperatingSystem() {
               fontSize: '1.1rem'
             }}
           />
-          <button type="submit" className="btn-primary" disabled={!input.trim() || isLoading} style={{ padding: '0 2rem' }}>
-            <i className="fa-solid fa-paper-plane"></i> Send
+          <button type="submit" className="btn-primary ai-send-btn" disabled={!input.trim() || isLoading} style={{ padding: '0 2rem' }}>
+            <i className="fa-solid fa-paper-plane"></i> <span className="ai-send-text">Send</span>
           </button>
         </form>
       </footer>
@@ -422,6 +440,25 @@ export default function AIOperatingSystem() {
           0% { transform: scale(1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
           50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(239, 68, 68, 0.9); }
           100% { transform: scale(1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+        }
+        
+        .hide-mobile { display: inline; }
+        
+        @media (max-width: 600px) {
+          .ai-header { padding: 0.8rem 1rem !important; }
+          .ai-title h2 { font-size: 1.2rem !important; }
+          .ai-title-container { gap: 0.5rem !important; }
+          .ai-title-container > div:first-child { font-size: 1.5rem !important; }
+          .ai-header-actions { gap: 0.4rem !important; }
+          .ai-header-actions button { font-size: 0.75rem !important; padding: 0.4rem !important; }
+          .hide-mobile { display: none !important; }
+          
+          .ai-footer { padding: 0.8rem 1rem !important; gap: 0.5rem !important; }
+          .ai-mic-btn { width: 45px !important; height: 45px !important; }
+          .ai-footer form { gap: 0.5rem !important; }
+          .ai-footer form input { font-size: 1rem !important; padding: 0.8rem !important; }
+          .ai-send-btn { padding: 0 1rem !important; }
+          .ai-send-text { display: none !important; }
         }
       `}} />
     </div>
