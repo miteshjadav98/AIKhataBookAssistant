@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nes
 import { AuthService } from './auth.service';
 import { RegisterSchema } from './dto/register.dto';
 import { LoginSchema } from './dto/login.dto';
+import { GoogleAuthSchema } from './dto/google-auth.dto';
 import type { RegisterDto } from './dto/register.dto';
 import type { LoginDto } from './dto/login.dto';
+import type { GoogleAuthDto } from './dto/google-auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -81,6 +83,40 @@ export class AuthController {
     return {
       status: 'success',
       message: 'Login successful',
+      data: result,
+    };
+  }
+
+  /**
+   * POST /auth/google
+   * Authenticate with Google Sign-In.
+   * Handles login, registration, and account linking automatically.
+   * No authentication required.
+   */
+  @Post('google')
+  @ApiOperation({ summary: 'Authenticate with Google Sign-In (login, register, or link account)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['credential'],
+      properties: {
+        credential: { type: 'string', description: 'Google ID token from Google Identity Services' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Google auth successful, returns JWT token and user info' })
+  @ApiResponse({ status: 401, description: 'Invalid Google token' })
+  async googleAuth(@Body() body: GoogleAuthDto) {
+    const validationResult = GoogleAuthSchema.safeParse(body);
+    if (!validationResult.success) {
+      throw new BadRequestException(validationResult.error.format());
+    }
+
+    const result = await this.authService.googleAuth(validationResult.data);
+
+    return {
+      status: 'success',
+      message: result.isNewUser ? 'Account created successfully with Google' : 'Google login successful',
       data: result,
     };
   }

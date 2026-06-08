@@ -34,15 +34,24 @@ enum Role {
   STAFF
 }
 
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  BOTH
+}
+
 model User {
-  id           String   @id @default(uuid())
+  id           String       @id @default(uuid())
   shopId       String   
   name         String
-  email        String   @unique
-  passwordHash String
-  role         Role     @default(STAFF)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  email        String       @unique
+  passwordHash String?
+  googleId     String?      @unique
+  avatarUrl    String?
+  authProvider AuthProvider  @default(EMAIL)
+  role         Role         @default(STAFF)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   shop Shop @relation(fields: [shopId], references: [id])
 }

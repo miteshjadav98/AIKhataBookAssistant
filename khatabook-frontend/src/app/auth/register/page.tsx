@@ -1,11 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import styles from "./page.module.css";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,6 +32,91 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleCallback = useCallback(async (response: any) => {
+    setIsGoogleLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      const data = await res.json();
+      console.log("[Google Register] Response:", data);
+
+      if (!res.ok) {
+        throw new Error(data.message || "Google sign-up failed");
+      }
+
+      localStorage.setItem("token", data.data.token);
+      localStorage.setItem("user", JSON.stringify(data.data.user));
+
+      router.push("/workspace");
+    } catch (err: any) {
+      console.error("[Google Register] Error:", err);
+      setError(err.message);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [router]);
+
+  const isGsiInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'your_google_client_id_here') return;
+
+    const renderGoogleButton = () => {
+      if (!window.google) return;
+
+      if (!isGsiInitialized.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+        isGsiInitialized.current = true;
+      }
+
+      const btnContainer = document.getElementById("google-signin-btn-register");
+      if (btnContainer) {
+        window.google.accounts.id.renderButton(btnContainer, {
+          theme: "outline",
+          size: "large",
+          text: "signup_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+        });
+      }
+    };
+
+    // If script is already loaded
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+      return;
+    }
+
+    // Otherwise load it
+    const scriptId = "google-gsi-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    
+    script.addEventListener("load", renderGoogleButton);
+
+    return () => {
+      script.removeEventListener("load", renderGoogleButton);
+    };
+  }, [handleGoogleCallback]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -63,6 +163,26 @@ export default function RegisterPage() {
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
+
+        {/* Google Sign-Up Button */}
+        {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'your_google_client_id_here' && (
+          <div className={styles.googleSection}>
+            <div id="google-signin-btn-register" className={styles.googleBtnWrapper}></div>
+            {isGoogleLoading && (
+              <div className={styles.googleLoading}>
+                <div className={styles.spinner}></div>
+                <span>Creating account with Google...</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Divider */}
+        {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'your_google_client_id_here' && (
+          <div className={styles.divider}>
+            <span className={styles.dividerText}>or register with email</span>
+          </div>
+        )}
 
         <form className={styles.form} onSubmit={handleRegister}>
           <div className={styles.inputGroup}>
@@ -123,7 +243,7 @@ export default function RegisterPage() {
           <button 
             type="submit" 
             className={`btn-primary ${styles.submitBtn}`}
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
           >
             {isLoading ? "Creating..." : "Create Account"}
           </button>

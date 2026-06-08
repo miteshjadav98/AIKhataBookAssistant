@@ -192,7 +192,7 @@ button {
 
 .nav-links {
   display: flex;
-  gap: 2rem;
+  gap: 1.25rem;
   align-items: center;
 }
 
@@ -201,6 +201,7 @@ button {
   font-weight: 500;
   color: var(--text-secondary);
   transition: color var(--transition-fast);
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -253,6 +254,40 @@ button {
 .theme-toggle-text {
   display: none; /* hide text label on desktop */
 }
+
+/* User Avatar Section */
+.nav-user-section {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.nav-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  transition: border-color var(--transition-fast), transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.nav-user-avatar:hover {
+  border-color: var(--accent-primary);
+  transform: scale(1.08);
+}
+
+.nav-user-avatar--initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-gradient);
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: 'Outfit', sans-serif;
+}
+
 
 /* Hamburger – hidden on desktop */
 .hamburger {
@@ -618,6 +653,55 @@ button {
     margin-top: 1.5rem;
     padding: 0.85rem 1.25rem;
     font-size: 1rem;
+  }
+
+  .nav-user-section {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    margin-top: 1.5rem;
+    gap: 1rem;
+  }
+
+  .nav-user-section .nav-user-avatar {
+    align-self: center;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .nav-user-section .nav-user-avatar--initials {
+    font-size: 1.5rem;
+  }
+
+  .settings-layout {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+
+  .settings-sidebar {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .settings-sidebar button {
+    white-space: nowrap;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .nav-user-section .login-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.85rem 1.25rem;
+    font-size: 1rem;
+  }
+
+  .nav-user-avatar {
+    width: 38px;
+    height: 38px;
   }
 
   .page-container {

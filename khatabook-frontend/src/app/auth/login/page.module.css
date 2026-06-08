@@ -2,13 +2,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 80px); /* Adjust based on navbar height */
+  min-height: calc(100vh - 80px);
   padding: 2rem;
 }
 
 .authCard {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 2.5rem;
   display: flex;
   flex-direction: column;
@@ -17,7 +17,7 @@
 
 .header {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .title {
@@ -75,8 +75,9 @@
   font-size: 0.85rem;
   text-align: center;
   background: rgba(239, 68, 68, 0.1);
-  padding: 0.5rem;
+  padding: 0.75rem;
   border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .footer {
@@ -88,5 +89,77 @@
 
 .link {
   color: var(--accent-primary);
+  font-weight: 500;
+}
+
+/* ─── Google Sign-In ────────────────────────────────── */
+.googleSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.googleBtnWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+/* Make Google's rendered iframe button fill the container */
+.googleBtnWrapper > div {
+  width: 100% !important;
+}
+
+.googleBtnWrapper iframe {
+  width: 100% !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.googleLoading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.5rem;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Divider ───────────────────────────────────────── */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.dividerText {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
   font-weight: 500;
 }

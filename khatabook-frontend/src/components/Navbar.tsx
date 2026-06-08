@@ -77,7 +77,7 @@ export default function Navbar() {
               <Link href="/products" className="nav-link" onClick={() => setMenuOpen(false)}>Products</Link>
               <Link href="/sales" className="nav-link" onClick={() => setMenuOpen(false)}>Sales</Link>
               <Link href="/purchases" className="nav-link" onClick={() => setMenuOpen(false)}>Purchases</Link>
-              <Link href="/settings" className="nav-link" onClick={() => setMenuOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><i className="fa-solid fa-gear"></i> Settings</Link>
+              <Link href="/reports" className="nav-link" onClick={() => setMenuOpen(false)}>Reports</Link>
               <Link href="/ai" className="nav-link" onClick={() => setMenuOpen(false)} style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>🤖 AI Copilot</Link>
             </>
           )}
@@ -112,18 +112,35 @@ export default function Navbar() {
                 <span className="theme-toggle-text">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
               </button>
 
-              <button 
-                onClick={() => {
-                  localStorage.removeItem("token");
-                  localStorage.removeItem("user");
-                  setUser(null);
-                  setMenuOpen(false);
-                  window.location.href = "/auth/login";
-                }}
-                className="btn-secondary login-btn"
-              >
-                Logout
-              </button>
+              {/* User Avatar & Logout */}
+              <div className="nav-user-section">
+                <Link href="/settings" onClick={() => setMenuOpen(false)} title="Settings" style={{ display: 'flex' }}>
+                  {user.avatarUrl ? (
+                    <img 
+                      src={user.avatarUrl} 
+                      alt={user.name || "User"} 
+                      className="nav-user-avatar"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="nav-user-avatar nav-user-avatar--initials">
+                      {(user.name || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </Link>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                    setUser(null);
+                    setMenuOpen(false);
+                    window.location.href = "/auth/login";
+                  }}
+                  className="btn-secondary login-btn"
+                >
+                  Logout
+                </button>
+              </div>
             </>
           )}
         </nav>

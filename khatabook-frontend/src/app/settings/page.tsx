@@ -120,9 +120,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+      <div className="settings-layout" style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
         {/* Sidebar Tabs */}
-        <div style={{ 
+        <div className="settings-sidebar" style={{ 
           display: 'flex', 
           flexDirection: 'column', 
           gap: '0.5rem', 
@@ -166,21 +166,37 @@ export default function SettingsPage() {
               
               {/* Avatar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'var(--primary-gradient)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '2rem',
-                  color: 'white',
-                  fontWeight: 700,
-                  boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
-                }}>
-                  {userName.charAt(0).toUpperCase()}
-                </div>
+                {user.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt={userName}
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid var(--glass-border)',
+                      boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
+                    }}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-gradient)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '2rem',
+                    color: 'white',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
+                  }}>
+                    {userName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <div style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>{userName}</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{user.email}</div>
