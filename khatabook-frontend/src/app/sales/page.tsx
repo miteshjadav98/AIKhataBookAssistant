@@ -69,6 +69,7 @@ export default function SalesPage() {
                 <th>Paid</th>
                 <th>Pending Due</th>
                 <th>Payment Mode</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -96,6 +97,20 @@ export default function SalesPage() {
                     )}
                   </td>
                   <td><span className="badge" style={{ backgroundColor: "#e2e8f0", color: "#475569" }}>{sale.paymentMode}</span></td>
+                  <td>
+                    {sale.pdfUrl ? (
+                      <a 
+                        href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}${sale.pdfUrl}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="btn-secondary" 
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <i className="fas fa-file-pdf"></i> PDF
+                      </a>
+                    ) : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -17,6 +17,7 @@ export default function SaleDetailPage() {
   const [editData, setEditData] = useState({ invoiceNumber: "", discount: "", notes: "", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [editHistory, setEditHistory] = useState<any[]>([]);
+  const [showProfit, setShowProfit] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -104,6 +105,11 @@ export default function SaleDetailPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
+          {sale.pdfUrl && (
+            <a href={`${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}${sale.pdfUrl}`} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ fontSize: "0.85rem", display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <i className="fas fa-file-pdf"></i> Download PDF
+            </a>
+          )}
           <button className="btn-primary" onClick={openEditForm} style={{ fontSize: "0.85rem" }}>
             ✏️ Edit Invoice
           </button>
@@ -249,9 +255,23 @@ export default function SaleDetailPage() {
               ₹{sale.dueAmount > 0 ? (sale.dueAmount || 0).toLocaleString("en-IN") : (sale.subtotal || 0).toLocaleString("en-IN")}
             </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Profit</span>
-            <span style={{ fontWeight: 600, color: (sale.profit || 0) > 0 ? "#22c55e" : "#ef4444" }}>₹{(sale.profit || 0).toLocaleString("en-IN")}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span 
+              style={{ color: "var(--text-secondary)", fontSize: "0.85rem", display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }} 
+              onClick={() => setShowProfit(!showProfit)}
+              title={showProfit ? "Hide Profit" : "Show Profit"}
+            >
+              Profit <i className={`fas ${showProfit ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </span>
+            {showProfit ? (
+              <span style={{ fontWeight: 600, color: (sale.profit || 0) > 0 ? "#22c55e" : "#ef4444" }}>
+                ₹{(sale.profit || 0).toLocaleString("en-IN")}
+              </span>
+            ) : (
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>
+                ••••••
+              </span>
+            )}
           </div>
         </div>
       </div>

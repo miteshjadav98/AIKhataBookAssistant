@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSalesDto } from './dto/create-sales.dto';
+import { PdfService } from '../pdf/pdf.service';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly pdfService: PdfService
+  ) {}
 
   async createSalesTransaction(shopId: string, data: CreateSalesDto) {
     console.log('[SalesService.createSalesTransaction] shopId:', shopId, data);
@@ -15,7 +19,7 @@ export class SalesService {
     });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
       let totalProfit = 0;
       const salesItems = [];
@@ -132,6 +136,34 @@ export class SalesService {
 
       return salesTx;
     });
+
+    // Generate PDF after transaction is committed
+    try {
+      const fullSaleData = await this.getSaleById(shopId, result.id);
+      const shop = await this.prisma.shop.findUnique({ where: { id: shopId } });
+      const pdfUrl = await this.pdfService.generateInvoicePdf(result.id, {
+        shop,
+        customer: fullSaleData.customer,
+        items: fullSaleData.items,
+        subtotal: fullSaleData.subtotal,
+        discount: fullSaleData.discount,
+        paidAmount: fullSaleData.paidAmount,
+        dueAmount: fullSaleData.dueAmount,
+        paymentMode: fullSaleData.paymentMode,
+        invoiceNumber: fullSaleData.invoiceNumber,
+        createdAt: fullSaleData.createdAt
+      }, 'SALE');
+
+      await this.prisma.salesTransaction.update({
+        where: { id: result.id },
+        data: { pdfUrl }
+      });
+      result.pdfUrl = pdfUrl;
+    } catch (err) {
+      console.error('[SalesService] Failed to generate PDF:', err);
+    }
+
+    return result;
   }
 
   async getSales(shopId: string) {

@@ -89,7 +89,7 @@ export default function NewSalesPage() {
 
     setLoading(true);
     try {
-      await apiFetch("/sales", {
+      const res = await apiFetch("/sales", {
         method: "POST",
         body: JSON.stringify({
           customerId,
@@ -105,7 +105,15 @@ export default function NewSalesPage() {
           notes
         }),
       });
-      router.push("/sales");
+      
+      const createdSale = res.data;
+      if (createdSale && createdSale.pdfUrl) {
+        // Attempt to open the PDF immediately for printing/saving
+        const pdfLink = `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'}${createdSale.pdfUrl}`;
+        window.open(pdfLink, '_blank');
+      }
+      
+      router.push(`/sales/${createdSale?.id || ''}`);
     } catch (err: any) {
       alert(err.message || "Failed to create sale");
     } finally {

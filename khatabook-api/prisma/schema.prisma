@@ -143,6 +143,7 @@ model Purchase {
   lastEditedAt  DateTime?
   editCount     Int            @default(0)
   lastEditReason String?
+  pdfUrl        String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -166,6 +167,7 @@ model SalesTransaction {
   lastEditedAt  DateTime?
   editCount     Int         @default(0)
   lastEditReason String?
+  pdfUrl        String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
