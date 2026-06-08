@@ -44,7 +44,7 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/login")
 async def login_endpoint(req: LoginRequest):
-    url = f"{os.getenv('KHATABOOK_API_URL', 'http://localhost:3000')}/auth/login"
+    url = f"{os.getenv('KHATABOOK_API_URL', 'http://localhost:3001')}/auth/login"
     try:
         response = requests.post(url, json={"email": req.email, "password": req.password})
         return response.json()
