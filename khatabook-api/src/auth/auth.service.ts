@@ -134,7 +134,13 @@ export class AuthService {
         throw new UnauthorizedException('Invalid email or password');
       }
 
-      // 4. Generate JWT token
+      // 4. Update last login time
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+
+      // 5. Generate JWT token
       const token = this.generateToken(user);
       console.log('[AuthService.login] Login successful for:', user.email, 'shopId:', user.shopId);
 
@@ -184,14 +190,15 @@ export class AuthService {
         // Case 1: Existing Google user → login
         console.log('[AuthService.googleAuth] Existing Google user found:', user.email);
 
-        // Update avatar if changed
-        if (picture && picture !== user.avatarUrl) {
-          await this.prisma.user.update({
-            where: { id: user.id },
-            data: { avatarUrl: picture },
-          });
-          user.avatarUrl = picture;
-        }
+        // Update avatar if changed, and last login time
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { 
+            avatarUrl: picture || user.avatarUrl,
+            lastLoginAt: new Date() 
+          },
+        });
+        if (picture) user.avatarUrl = picture;
 
         const token = this.generateToken(user);
         return {
@@ -227,6 +234,7 @@ export class AuthService {
             googleId,
             avatarUrl: picture || user.avatarUrl,
             authProvider: user.passwordHash ? 'BOTH' : 'GOOGLE',
+            lastLoginAt: new Date(),
           },
           include: { shop: true },
         });
@@ -272,6 +280,7 @@ export class AuthService {
             avatarUrl: picture || null,
             authProvider: 'GOOGLE',
             role: 'ADMIN',
+            lastLoginAt: new Date(),
           },
         });
 

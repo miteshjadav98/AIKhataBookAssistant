@@ -255,13 +255,13 @@ export class CustomerService {
           throw new UnauthorizedException('Invalid email/phone or password');
         }
 
-        return this.generateCustomerToken(targetCustomer);
+        return await this.generateCustomerToken(targetCustomer);
       }
 
       // No shopId specified — check how many shops
       if (customers.length === 1) {
         // Only one shop → auto-login
-        return this.generateCustomerToken(validCustomer);
+        return await this.generateCustomerToken(validCustomer);
       }
 
       // Multiple shops → return shop list for selection
@@ -323,11 +323,11 @@ export class CustomerService {
         if (!targetCustomer) {
           throw new UnauthorizedException('You are not registered with this shop');
         }
-        return this.generateCustomerToken(targetCustomer);
+        return await this.generateCustomerToken(targetCustomer);
       }
 
       if (customers.length === 1) {
-        return this.generateCustomerToken(customers[0]);
+        return await this.generateCustomerToken(customers[0]);
       }
 
       const shops = customers.map(c => ({
@@ -377,7 +377,12 @@ export class CustomerService {
   /**
    * Helper: Generate JWT token for a specific customer record.
    */
-  private generateCustomerToken(customer: any) {
+  private async generateCustomerToken(customer: any) {
+    await this.prisma.customer.update({
+      where: { id: customer.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     const secret = process.env.JWT_SECRET || 'mjrockseverybody';
     const token = jwt.sign(
       {
@@ -653,6 +658,6 @@ export class CustomerService {
       throw new UnauthorizedException('You are not registered with this shop');
     }
 
-    return this.generateCustomerToken(targetCustomer);
+    return await this.generateCustomerToken(targetCustomer);
   }
 }

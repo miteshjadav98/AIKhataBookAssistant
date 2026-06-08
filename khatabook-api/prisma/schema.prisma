@@ -52,6 +52,7 @@ model User {
   role         Role         @default(STAFF)
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  lastLoginAt  DateTime?
 
   shop Shop @relation(fields: [shopId], references: [id])
 }
@@ -75,6 +76,7 @@ model Customer {
   deletedAt           DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  lastLoginAt         DateTime?
 
   shop              Shop               @relation(fields: [shopId], references: [id])
   salesTransactions SalesTransaction[]
