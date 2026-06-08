@@ -63,6 +63,8 @@ model Customer {
   phone               String?
   email               String?
   passwordHash        String?
+  googleId            String?    @unique
+  avatarUrl           String?
   gstin               String?
   billingAddress      String?
   shippingAddress     String?

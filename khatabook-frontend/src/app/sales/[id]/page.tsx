@@ -17,6 +17,7 @@ export default function SaleDetailPage() {
   const [editData, setEditData] = useState({ invoiceNumber: "", discount: "", notes: "", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [editHistory, setEditHistory] = useState<any[]>([]);
+  const [showProfit, setShowProfit] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -249,9 +250,22 @@ export default function SaleDetailPage() {
               ₹{sale.dueAmount > 0 ? (sale.dueAmount || 0).toLocaleString("en-IN") : (sale.subtotal || 0).toLocaleString("en-IN")}
             </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Profit</span>
-            <span style={{ fontWeight: 600, color: (sale.profit || 0) > 0 ? "#22c55e" : "#ef4444" }}>₹{(sale.profit || 0).toLocaleString("en-IN")}</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Profit</span>
+              <button 
+                onClick={() => setShowProfit(!showProfit)}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", padding: 0 }}
+                title={showProfit ? "Hide Profit" : "Show Profit"}
+              >
+                {showProfit ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
+            {showProfit ? (
+              <span style={{ fontWeight: 600, color: (sale.profit || 0) > 0 ? "#22c55e" : "#ef4444" }}>₹{(sale.profit || 0).toLocaleString("en-IN")}</span>
+            ) : (
+              <span style={{ fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "2px" }}>••••</span>
+            )}
           </div>
         </div>
       </div>

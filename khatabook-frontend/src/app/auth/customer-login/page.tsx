@@ -1,8 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
 
 interface ShopOption {
   shopId: string;
@@ -18,12 +34,96 @@ export default function CustomerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [shops, setShops] = useState<ShopOption[] | null>(null);
   const [selectingShop, setSelectingShop] = useState(false);
+  const [isGoogleLogin, setIsGoogleLogin] = useState(false);
+  const [googleCredential, setGoogleCredential] = useState("");
   const router = useRouter();
+
+  const handleGoogleCallback = useCallback(async (response: any) => {
+    setLoading(true);
+    setError("");
+    setIsGoogleLogin(true);
+    setGoogleCredential(response.credential);
+
+    try {
+      const res = await apiFetch("/customers/login/google", {
+        method: "POST",
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      // Multiple shops found — show shop picker
+      if (res.multipleShops) {
+        setShops(res.shops);
+        setSelectingShop(true);
+        setLoading(false);
+        return;
+      }
+
+      completeLogin(res.data);
+    } catch (err: any) {
+      console.error("[Customer Google Login] Error:", err);
+      setError(err.message);
+      setIsGoogleLogin(false);
+      setLoading(false);
+    }
+  }, []);
+
+  const isGsiInitialized = useRef(false);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'your_google_client_id_here') return;
+
+    const renderGoogleButton = () => {
+      if (!window.google) return;
+
+      if (!isGsiInitialized.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCallback,
+        });
+        isGsiInitialized.current = true;
+      }
+
+      const btnContainer = document.getElementById("google-signin-btn-customer");
+      if (btnContainer) {
+        window.google.accounts.id.renderButton(btnContainer, {
+          theme: "outline",
+          size: "large",
+          text: "signin_with",
+          shape: "rectangular",
+          logo_alignment: "left",
+        });
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+      return;
+    }
+
+    const scriptId = "google-gsi-script";
+    let script = document.getElementById(scriptId) as HTMLScriptElement;
+    
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    
+    script.addEventListener("load", renderGoogleButton);
+
+    return () => {
+      script.removeEventListener("load", renderGoogleButton);
+    };
+  }, [handleGoogleCallback]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setIsGoogleLogin(false);
 
     try {
       const res = await apiFetch("/customers/login", {
@@ -52,10 +152,18 @@ export default function CustomerLoginPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch("/customers/login", {
-        method: "POST",
-        body: JSON.stringify({ ...form, shopId }),
-      });
+      let res;
+      if (isGoogleLogin) {
+        res = await apiFetch("/customers/login/google", {
+          method: "POST",
+          body: JSON.stringify({ credential: googleCredential, shopId }),
+        });
+      } else {
+        res = await apiFetch("/customers/login", {
+          method: "POST",
+          body: JSON.stringify({ ...form, shopId }),
+        });
+      }
       completeLogin(res.data);
     } catch (err: any) {
       setError(err.message);
@@ -156,6 +264,20 @@ export default function CustomerLoginPage() {
         </p>
 
         {error && <p className="form-error" style={{ marginBottom: "1rem", textAlign: "center" }}>❌ {error}</p>}
+
+        {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'your_google_client_id_here' && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', width: '100%' }}>
+            <div id="google-signin-btn-customer" style={{ minHeight: '40px' }}></div>
+          </div>
+        )}
+
+        {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== 'your_google_client_id_here' && (
+          <div style={{ display: 'flex', alignItems: 'center', margin: '1rem 0', color: 'var(--text-secondary)' }}>
+            <hr style={{ flex: 1, borderColor: 'var(--border-color)', borderTop: 'none' }} />
+            <span style={{ padding: '0 1rem', fontSize: '0.85rem' }}>or login with credentials</span>
+            <hr style={{ flex: 1, borderColor: 'var(--border-color)', borderTop: 'none' }} />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

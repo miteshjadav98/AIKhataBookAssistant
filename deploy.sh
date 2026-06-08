@@ -51,10 +51,10 @@ npx prisma generate
 echo "Building backend..."
 npm run build
 
-echo "Starting backend with PM2 on port 3000..."
+echo "Starting backend with PM2 on port 3001..."
 # Delete the old process first to ensure clean environment variables and settings
 pm2 delete crm-backend || true
-PORT=3000 pm2 start dist/main.js --name "crm-backend"
+PORT=3001 pm2 start dist/main.js --name "crm-backend"
 
 # 4. Setup & Run AI Assistant (FastAPI)
 echo "Setting up AI Assistant (FastAPI)..."
@@ -67,7 +67,7 @@ echo "Installing Python dependencies..."
 # Use the local venv's pip
 ./venv/bin/pip install -r requirements.txt
 
-echo "Starting AI Assistant with PM2 on port 8000..."
+echo "Starting AI Assistant with PM2 on port 8002..."
 pm2 delete ai-assistant || true
 # Run uvicorn from the virtual environment
 pm2 start ./venv/bin/python --name "ai-assistant" -- -m uvicorn main:app --host 127.0.0.1 --port 8002
@@ -85,10 +85,10 @@ rm -rf .next
 echo "Building frontend..."
 npm run build
 
-echo "Starting frontend with PM2 on port 3001..."
+echo "Starting frontend with PM2 on port 3000..."
 # Delete the old process first to avoid duplicates or port binding issues
 pm2 delete crm-frontend || true
-pm2 start npm --name "crm-frontend" -- start -- -p 3001
+pm2 start npm --name "crm-frontend" -- start -- -p 3000
 
 # 6. Save PM2 configuration to run on startup
 echo "Configuring PM2 to start on boot..."
@@ -105,7 +105,7 @@ server {
     server_name app.miteklabs.tech;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:3000;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -124,7 +124,7 @@ server {
     server_name api.miteklabs.tech;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3001;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

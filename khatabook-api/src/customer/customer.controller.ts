@@ -166,6 +166,41 @@ export class CustomerController {
     };
   }
 
+  @Post('login/google')
+  @ApiOperation({ summary: 'Customer: Login with Google SSO. Returns shops list or auto-logs in.' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['credential'],
+      properties: {
+        credential: { type: 'string', description: 'Google ID token from Google Identity Services' },
+        shopId: { type: 'string', description: 'Optional: specific shop to login to if multiple are found' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Google login successful or returns list of shops' })
+  @ApiResponse({ status: 401, description: 'Invalid Google token or unregistered email' })
+  async customerGoogleLogin(@Body() body: { credential: string; shopId?: string }) {
+    if (!body.credential) {
+      throw new BadRequestException('Google credential is required');
+    }
+
+    const result = await this.customerService.customerGoogleAuth(body);
+
+    if ((result as any).multipleShops) {
+      return {
+        status: 'success',
+        ...result,
+      };
+    }
+
+    return {
+      status: 'success',
+      message: 'Login successful via Google',
+      data: result,
+    };
+  }
+
   // ─── CUSTOMER SELF-SERVICE ────────────────────────────
 
   @Post('me/change-password')

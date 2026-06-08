@@ -285,6 +285,96 @@ export class CustomerService {
   }
 
   /**
+   * Customer logs in with Google SSO.
+   */
+  async customerGoogleAuth(data: { credential: string; shopId?: string }) {
+    console.log('[CustomerService.customerGoogleAuth] Called');
+    try {
+      const googlePayload = await this.verifyGoogleToken(data.credential);
+      const { email, sub: googleId, picture } = googlePayload;
+
+      const customers = await this.prisma.customer.findMany({
+        where: {
+          isDeleted: false,
+          OR: [
+            { email },
+            { googleId },
+          ],
+        },
+        include: { shop: { select: { id: true, name: true, shopCode: true } } },
+      });
+
+      if (customers.length === 0) {
+        throw new UnauthorizedException('No customer account found with this email. Please ask the shopkeeper to register you.');
+      }
+
+      const customerIds = customers.map(c => c.id);
+      await this.prisma.customer.updateMany({
+        where: { id: { in: customerIds } },
+        data: {
+          googleId,
+          avatarUrl: picture,
+          isTemporaryPassword: false,
+        },
+      });
+
+      if (data.shopId) {
+        const targetCustomer = customers.find(c => c.shopId === data.shopId);
+        if (!targetCustomer) {
+          throw new UnauthorizedException('You are not registered with this shop');
+        }
+        return this.generateCustomerToken(targetCustomer);
+      }
+
+      if (customers.length === 1) {
+        return this.generateCustomerToken(customers[0]);
+      }
+
+      const shops = customers.map(c => ({
+        shopId: c.shopId,
+        shopName: c.shop.name,
+        shopCode: c.shop.shopCode,
+        totalReceivable: c.totalReceivable,
+        customerName: c.name,
+      }));
+
+      return {
+        multipleShops: true,
+        shops,
+        message: 'Multiple shops found. Please select a shop.',
+      };
+    } catch (error) {
+      console.error('[CustomerService.customerGoogleAuth] ERROR:', error.message || error);
+      throw error;
+    }
+  }
+
+  private async verifyGoogleToken(idToken: string): Promise<any> {
+    const googleClientId = process.env.GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      throw new Error('GOOGLE_CLIENT_ID is not configured on the server');
+    }
+
+    const response = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    );
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Invalid Google token');
+    }
+
+    const payload = await response.json();
+    if (payload.aud !== googleClientId) {
+      throw new UnauthorizedException('Google token was not issued for this application');
+    }
+    if (payload.email_verified !== 'true') {
+      throw new UnauthorizedException('Google email is not verified');
+    }
+
+    return payload;
+  }
+
+  /**
    * Helper: Generate JWT token for a specific customer record.
    */
   private generateCustomerToken(customer: any) {
