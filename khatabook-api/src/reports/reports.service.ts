@@ -1,11 +1,27 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async generateReport(shopId: string, startDateStr?: string, endDateStr?: string) {
+    console.log('[ReportsService.generateReport] Called for shopId:', shopId);
+
+    // Cache key includes date range for specificity
+    const cacheKey = `report_${shopId}_${startDateStr || 'all'}_${endDateStr || 'all'}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[ReportsService.generateReport] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[ReportsService.generateReport] CACHE MISS for:', cacheKey);
+
     const whereClause: any = { shopId };
     
     if (startDateStr || endDateStr) {
@@ -62,7 +78,7 @@ export class ReportsService {
       orderBy: { totalReceivable: 'desc' }
     });
 
-    return {
+    const result = {
       salesSummary: {
         totalSales,
         totalPaid,
@@ -73,5 +89,9 @@ export class ReportsService {
       outstandingDues: outstandingCustomers,
       invoices
     };
+
+    // Cache reports for 2 minutes (120000 ms) — shorter TTL since reports should be near real-time
+    await this.cacheManager.set(cacheKey, result, 120000);
+    return result;
   }
 }

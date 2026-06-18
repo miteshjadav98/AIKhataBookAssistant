@@ -4,7 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from tools import get_all_tools
 from dotenv import load_dotenv
-from langgraph.checkpoint.memory import MemorySaver
+from simple_redis_saver import SimpleRedisSaver
+from redis import Redis
 
 load_dotenv()
 
@@ -12,8 +13,12 @@ from prompt_utils import getprompt
 
 SYSTEM_PROMPT = getprompt("system_prompt")
 
-# Global in-memory checkpointer for the agent threads
-memory = MemorySaver()
+# Connect to Redis for persistent LangGraph state memory
+redis_host = os.getenv("REDIS_HOST", "localhost")
+redis_port = int(os.getenv("REDIS_PORT", 6379))
+redis_password = os.getenv("REDIS_PASSWORD", None)
+redis_conn = Redis(host=redis_host, port=redis_port, db=0, password=redis_password)
+memory = SimpleRedisSaver(redis_conn)
 
 def create_shopkeeper_agent():
     """Creates and returns the LangGraph ReAct agent for the shopkeeper."""

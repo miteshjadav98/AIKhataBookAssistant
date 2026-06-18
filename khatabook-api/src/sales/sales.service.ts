@@ -1,10 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSalesDto } from './dto/create-sales.dto';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async createSalesTransaction(shopId: string, data: CreateSalesDto) {
     console.log('[SalesService.createSalesTransaction] shopId:', shopId, data);
@@ -15,7 +20,7 @@ export class SalesService {
     });
     if (!customer) throw new NotFoundException('Customer not found');
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let subtotal = 0;
       let totalProfit = 0;
       const salesItems = [];
@@ -132,17 +137,49 @@ export class SalesService {
 
       return salesTx;
     });
+
+    // Invalidate related caches after successful transaction
+    await this.cacheManager.del(`sales_shop_${shopId}`);
+    await this.cacheManager.del(`products_shop_${shopId}`);
+    await this.cacheManager.del(`customers_shop_${shopId}`);
+    await this.cacheManager.del(`customer_balance_${data.customerId}`);
+    await this.cacheManager.del(`customer_ledger_${data.customerId}`);
+
+    return result;
   }
 
   async getSales(shopId: string) {
-    return this.prisma.salesTransaction.findMany({
+    console.log('[SalesService.getSales] Called for shopId:', shopId);
+
+    const cacheKey = `sales_shop_${shopId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[SalesService.getSales] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[SalesService.getSales] CACHE MISS for:', cacheKey);
+
+    const sales = await this.prisma.salesTransaction.findMany({
       where: { shopId },
       include: { customer: true },
       orderBy: { createdAt: 'desc' },
     });
+
+    await this.cacheManager.set(cacheKey, sales, 300000);
+    return sales;
   }
 
   async getSaleById(shopId: string, saleId: string) {
+    console.log('[SalesService.getSaleById] Called for saleId:', saleId);
+
+    const cacheKey = `sale_${shopId}_${saleId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[SalesService.getSaleById] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[SalesService.getSaleById] CACHE MISS for:', cacheKey);
+
     const sale = await this.prisma.salesTransaction.findFirst({
       where: { id: saleId, shopId },
       include: { customer: true },
@@ -160,7 +197,9 @@ export class SalesService {
       })
     );
 
-    return { ...sale, items: itemsWithNames };
+    const result = { ...sale, items: itemsWithNames };
+    await this.cacheManager.set(cacheKey, result, 300000);
+    return result;
   }
 
   async editSale(shopId: string, saleId: string, data: { invoiceNumber?: string; discount?: number; notes?: string; reason: string }) {
@@ -196,7 +235,7 @@ export class SalesService {
     const newDueAmount = sale.subtotal - newDiscount - sale.paidAmount;
     const dueDifference = newDueAmount - sale.dueAmount;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Update the sale
       const updated = await tx.salesTransaction.update({
         where: { id: saleId },
@@ -234,6 +273,16 @@ export class SalesService {
 
       return updated;
     });
+
+    // Invalidate related caches
+    await this.cacheManager.del(`sales_shop_${shopId}`);
+    await this.cacheManager.del(`sale_${shopId}_${saleId}`);
+    await this.cacheManager.del(`customer_balance_${sale.customerId}`);
+    await this.cacheManager.del(`customers_shop_${shopId}`);
+    await this.cacheManager.del(`customer_ledger_${sale.customerId}`);
+    await this.cacheManager.del(`customer_sale_${sale.customerId}_${saleId}`);
+
+    return result;
   }
 
   async getEditHistory(shopId: string, invoiceId: string) {

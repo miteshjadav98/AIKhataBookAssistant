@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
 
 @Injectable()
 export class PurchaseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async createPurchase(shopId: string, data: CreatePurchaseDto) {
     console.log('[PurchaseService.createPurchase] shopId:', shopId, data);
@@ -16,7 +21,7 @@ export class PurchaseService {
 
     const dueAmount = data.subtotal - data.discount - data.paidAmount;
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // 1. Create Purchase record
       const purchase = await tx.purchase.create({
         data: {
@@ -79,17 +84,49 @@ export class PurchaseService {
 
       return purchase;
     });
+
+    // Invalidate related caches
+    await this.cacheManager.del(`purchases_shop_${shopId}`);
+    await this.cacheManager.del(`products_shop_${shopId}`);
+    await this.cacheManager.del(`suppliers_shop_${shopId}`);
+    await this.cacheManager.del(`supplier_${shopId}_${data.supplierId}`);
+    await this.cacheManager.del(`supplier_ledger_${shopId}_${data.supplierId}`);
+
+    return result;
   }
 
   async getPurchases(shopId: string) {
-    return this.prisma.purchase.findMany({
+    console.log('[PurchaseService.getPurchases] Called for shopId:', shopId);
+
+    const cacheKey = `purchases_shop_${shopId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[PurchaseService.getPurchases] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[PurchaseService.getPurchases] CACHE MISS for:', cacheKey);
+
+    const purchases = await this.prisma.purchase.findMany({
       where: { shopId },
       include: { supplier: true },
       orderBy: { createdAt: 'desc' },
     });
+
+    await this.cacheManager.set(cacheKey, purchases, 300000);
+    return purchases;
   }
 
   async getPurchaseById(shopId: string, purchaseId: string) {
+    console.log('[PurchaseService.getPurchaseById] Called for purchaseId:', purchaseId);
+
+    const cacheKey = `purchase_${shopId}_${purchaseId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[PurchaseService.getPurchaseById] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[PurchaseService.getPurchaseById] CACHE MISS for:', cacheKey);
+
     const purchase = await this.prisma.purchase.findFirst({
       where: { id: purchaseId, shopId },
       include: { supplier: true },
@@ -106,6 +143,8 @@ export class PurchaseService {
       })
     );
 
-    return { ...purchase, items: itemsWithNames };
+    const result = { ...purchase, items: itemsWithNames };
+    await this.cacheManager.set(cacheKey, result, 300000);
+    return result;
   }
 }

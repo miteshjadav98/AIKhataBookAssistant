@@ -1,13 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class PaymentService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async createPayment(shopId: string, data: CreatePaymentDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Create the payment record
       const payment = await tx.payment.create({
         data: {
@@ -48,10 +53,35 @@ export class PaymentService {
 
       return payment;
     });
+
+    // Invalidate related caches
+    await this.cacheManager.del(`payments_shop_${shopId}`);
+    if (data.type === 'CUSTOMER_PAYMENT' && data.customerId) {
+      await this.cacheManager.del(`customer_balance_${data.customerId}`);
+      await this.cacheManager.del(`customers_shop_${shopId}`);
+      await this.cacheManager.del(`customer_ledger_${data.customerId}`);
+    }
+    if (data.type === 'SUPPLIER_PAYMENT' && data.supplierId) {
+      await this.cacheManager.del(`suppliers_shop_${shopId}`);
+      await this.cacheManager.del(`supplier_${shopId}_${data.supplierId}`);
+      await this.cacheManager.del(`supplier_ledger_${shopId}_${data.supplierId}`);
+    }
+
+    return result;
   }
 
   async getPayments(shopId: string) {
-    return this.prisma.payment.findMany({
+    console.log('[PaymentService.getPayments] Called for shopId:', shopId);
+
+    const cacheKey = `payments_shop_${shopId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[PaymentService.getPayments] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[PaymentService.getPayments] CACHE MISS for:', cacheKey);
+
+    const payments = await this.prisma.payment.findMany({
       where: { shopId },
       include: {
         customer: true,
@@ -59,5 +89,8 @@ export class PaymentService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    await this.cacheManager.set(cacheKey, payments, 300000);
+    return payments;
   }
 }

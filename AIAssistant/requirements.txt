@@ -9,3 +9,5 @@ requests
 python-dotenv
 pydantic
 sarvamai
+redis
+langgraph-checkpoint-redis

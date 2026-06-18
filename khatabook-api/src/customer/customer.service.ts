@@ -1,4 +1,6 @@
-import { Injectable, ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto, UpdateCustomerDto, ChangePasswordDto } from './dto/create-customer.dto';
 import { CustomerLoginDto } from './dto/customer-login.dto';
@@ -8,7 +10,10 @@ import { calculateInterest } from '../utils/interest';
 
 @Injectable()
 export class CustomerService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   /**
    * Admin creates a customer under their shop.
@@ -77,6 +82,9 @@ export class CustomerService {
 
       console.log('[CustomerService.createCustomer] Customer created:', customer.id, customer.name);
 
+      // Invalidate customer list cache for this shop
+      await this.cacheManager.del(`customers_shop_${shopId}`);
+
       return {
         id: customer.id,
         name: customer.name,
@@ -99,6 +107,14 @@ export class CustomerService {
   async getCustomersByShop(shopId: string) {
     console.log('[CustomerService.getCustomersByShop] Called for shopId:', shopId);
 
+    const cacheKey = `customers_shop_${shopId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[CustomerService.getCustomersByShop] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[CustomerService.getCustomersByShop] CACHE MISS for:', cacheKey);
+
     try {
       const customers = await this.prisma.customer.findMany({
         where: { shopId, isDeleted: false },
@@ -115,6 +131,7 @@ export class CustomerService {
       });
 
       console.log('[CustomerService.getCustomersByShop] Found', customers.length, 'customers');
+      await this.cacheManager.set(cacheKey, customers, 300000);
       return customers;
     } catch (error) {
       console.error('[CustomerService.getCustomersByShop] ERROR:', error.message || error);
@@ -128,6 +145,14 @@ export class CustomerService {
   async getCustomerById(shopId: string, customerId: string) {
     console.log('[CustomerService.getCustomerById] Called for customerId:', customerId);
 
+    const cacheKey = `customer_${shopId}_${customerId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[CustomerService.getCustomerById] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[CustomerService.getCustomerById] CACHE MISS for:', cacheKey);
+
     const customer = await this.prisma.customer.findFirst({
       where: { id: customerId, shopId, isDeleted: false },
       include: { shop: { select: { name: true, interestRate: true, shopCode: true } } },
@@ -137,7 +162,7 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    return {
+    const result = {
       id: customer.id,
       name: customer.name,
       phone: customer.phone,
@@ -149,6 +174,9 @@ export class CustomerService {
       shopCode: customer.shop.shopCode,
       createdAt: customer.createdAt,
     };
+
+    await this.cacheManager.set(cacheKey, result, 300000);
+    return result;
   }
 
   /**
@@ -169,6 +197,11 @@ export class CustomerService {
       where: { id: customerId },
       data,
     });
+
+    // Invalidate caches
+    await this.cacheManager.del(`customers_shop_${shopId}`);
+    await this.cacheManager.del(`customer_${shopId}_${customerId}`);
+    await this.cacheManager.del(`customer_balance_${customerId}`);
 
     console.log('[CustomerService.updateCustomer] Customer updated:', updated.id);
     return {
@@ -198,6 +231,11 @@ export class CustomerService {
       where: { id: customerId },
       data: { isDeleted: true, deletedAt: new Date() },
     });
+
+    // Invalidate caches
+    await this.cacheManager.del(`customers_shop_${shopId}`);
+    await this.cacheManager.del(`customer_${shopId}_${customerId}`);
+    await this.cacheManager.del(`customer_balance_${customerId}`);
 
     console.log('[CustomerService.deleteCustomer] Customer soft-deleted:', customerId);
     return { message: 'Customer deleted successfully' };
@@ -484,6 +522,15 @@ export class CustomerService {
   async getMyBalance(customerId: string) {
     console.log('[CustomerService.getMyBalance] Called for customerId:', customerId);
 
+    // Cache-Aside implementation
+    const cacheKey = `customer_balance_${customerId}`;
+    const cachedData = await this.cacheManager.get(cacheKey);
+    if (cachedData) {
+      console.log('[CustomerService.getMyBalance] CACHE HIT for:', cacheKey);
+      return cachedData;
+    }
+    console.log('[CustomerService.getMyBalance] CACHE MISS for:', cacheKey);
+
     try {
       const customer = await this.prisma.customer.findUnique({
         where: { id: customerId },
@@ -497,7 +544,7 @@ export class CustomerService {
 
       console.log('[CustomerService.getMyBalance] Balance:', customer.totalReceivable);
 
-      return {
+      const result = {
         id: customer.id,
         name: customer.name,
         phone: customer.phone,
@@ -507,6 +554,11 @@ export class CustomerService {
         shopName: customer.shop.name,
         shopInterestRate: customer.shop.interestRate,
       };
+
+      // Set cache for 5 minutes (300000 ms)
+      await this.cacheManager.set(cacheKey, result, 300000);
+
+      return result;
     } catch (error) {
       console.error('[CustomerService.getMyBalance] ERROR:', error.message || error);
       throw error;
@@ -519,6 +571,14 @@ export class CustomerService {
   async getCustomerLedger(customerId: string) {
     console.log('[CustomerService.getCustomerLedger] Called for customerId:', customerId);
 
+    const cacheKey = `customer_ledger_${customerId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[CustomerService.getCustomerLedger] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[CustomerService.getCustomerLedger] CACHE MISS for:', cacheKey);
+
     try {
       const sales = await this.prisma.salesTransaction.findMany({
         where: { customerId },
@@ -530,7 +590,9 @@ export class CustomerService {
         orderBy: { createdAt: 'desc' },
       });
 
-      return { sales, payments };
+      const result = { sales, payments };
+      await this.cacheManager.set(cacheKey, result, 300000);
+      return result;
     } catch (error) {
       console.error('[CustomerService.getCustomerLedger] ERROR:', error.message || error);
       throw error;
@@ -543,6 +605,14 @@ export class CustomerService {
    */
   async getCustomerSaleDetail(customerId: string, saleId: string) {
     console.log('[CustomerService.getCustomerSaleDetail] Called for saleId:', saleId);
+
+    const cacheKey = `customer_sale_${customerId}_${saleId}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) {
+      console.log('[CustomerService.getCustomerSaleDetail] CACHE HIT for:', cacheKey);
+      return cached;
+    }
+    console.log('[CustomerService.getCustomerSaleDetail] CACHE MISS for:', cacheKey);
 
     const sale = await this.prisma.salesTransaction.findFirst({
       where: { id: saleId, customerId },
@@ -581,7 +651,7 @@ export class CustomerService {
       },
     });
 
-    return {
+    const result = {
       id: sale.id,
       invoiceNumber: sale.invoiceNumber,
       shopName: sale.shop.name,
@@ -600,6 +670,9 @@ export class CustomerService {
       lastEditReason: sale.lastEditReason,
       editHistory,
     };
+
+    await this.cacheManager.set(cacheKey, result, 300000);
+    return result;
   }
 
   /**
