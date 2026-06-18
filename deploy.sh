@@ -38,20 +38,6 @@ AI_DIR="$APP_DIR/AIAssistant"
 
 echo "Using application directory: $APP_DIR"
 
-# 2.5 Verify .env files exist (they are git-ignored, must be created manually on server)
-echo "Checking environment files..."
-if [ ! -f "$BACKEND_DIR/.env" ]; then
-    echo "ERROR: $BACKEND_DIR/.env not found!"
-    echo "Create it with: DATABASE_URL, DIRECT_URL, JWT_SECRET, PORT, GOOGLE_CLIENT_ID, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD"
-    exit 1
-fi
-if [ ! -f "$AI_DIR/.env" ]; then
-    echo "ERROR: $AI_DIR/.env not found!"
-    echo "Create it with: OLLAMA_MODEL, OLLAMA_BASE_URL, OLLAMA_API_KEY, KHATABOOK_API_URL, SARVAM_API_KEY, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD"
-    exit 1
-fi
-echo "Environment files found."
-
 # 3. Build & Run Backend (NestJS)
 echo "Setting up CRM Backend (NestJS)..."
 cd "$BACKEND_DIR"
@@ -68,7 +54,7 @@ npm run build
 echo "Starting backend with PM2 on port 3001..."
 # Delete the old process first to ensure clean environment variables and settings
 pm2 delete crm-backend || true
-pm2 start dist/main.js --name "crm-backend" --cwd "$BACKEND_DIR"
+PORT=3001 pm2 start dist/main.js --name "crm-backend"
 
 # 4. Setup & Run AI Assistant (FastAPI)
 echo "Setting up AI Assistant (FastAPI)..."
@@ -84,7 +70,7 @@ echo "Installing Python dependencies..."
 echo "Starting AI Assistant with PM2 on port 8002..."
 pm2 delete ai-assistant || true
 # Run uvicorn from the virtual environment
-pm2 start ./venv/bin/python --name "ai-assistant" --cwd "$AI_DIR" -- -m uvicorn main:app --host 127.0.0.1 --port 8002
+pm2 start ./venv/bin/python --name "ai-assistant" -- -m uvicorn main:app --host 127.0.0.1 --port 8002
 
 # 5. Build & Run Frontend (Next.js)
 echo "Setting up CRM Frontend (Next.js)..."
