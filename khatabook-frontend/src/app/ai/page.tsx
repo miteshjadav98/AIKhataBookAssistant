@@ -32,6 +32,7 @@ export default function AIOperatingSystem() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<string>("");
+  const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     inputRef.current = input;
@@ -66,6 +67,39 @@ export default function AIOperatingSystem() {
     if (SpeechRecognition) {
       // We will initialize it inside toggleRecording to fix mobile browser reuse issues
     }
+
+    // AI Chat Idle Timeout (15 minutes = 900,000 ms)
+    const handleActivity = () => {
+      if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+      activityTimerRef.current = setTimeout(async () => {
+        // 15 minutes idle - end chat
+        if (threadIdRef.current) {
+          try {
+            const AI_URL = window.location.hostname === 'localhost' 
+              ? "/ai-api/api/chat" 
+              : "https://ai.miteklabs.tech/api/chat";
+            await fetch(`${AI_URL}/${threadIdRef.current}`, { method: 'DELETE' });
+          } catch(e) {}
+        }
+        if (audioRef.current) audioRef.current.pause();
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        router.push('/dashboard');
+      }, 15 * 60 * 1000);
+    };
+
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+    handleActivity(); // Init
+
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+      if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+    };
   }, [router]);
 
   useEffect(() => {
@@ -152,7 +186,15 @@ export default function AIOperatingSystem() {
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
+    if (threadIdRef.current) {
+      try {
+        const AI_URL = window.location.hostname === 'localhost' 
+          ? "/ai-api/api/chat" 
+          : "https://ai.miteklabs.tech/api/chat";
+        await fetch(`${AI_URL}/${threadIdRef.current}`, { method: 'DELETE' });
+      } catch(e) {}
+    }
     setMessages([{ role: "system", content: "Chat cleared. I'm ready for your next request!" }]);
     threadIdRef.current = uuidv4(); // Generate new thread id to reset backend memory
     if (audioRef.current) audioRef.current.pause();

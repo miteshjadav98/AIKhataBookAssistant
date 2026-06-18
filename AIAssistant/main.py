@@ -130,6 +130,23 @@ async def chat_endpoint(req: ChatRequest):
         print(f"Error invoking agent: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/chat/{thread_id}")
+async def delete_chat_endpoint(thread_id: str, token: str = None):
+    # In a real app we'd verify the token here
+    if not thread_id:
+        raise HTTPException(status_code=400, detail="Thread ID required")
+    
+    print(f"\n--- DELETING CHAT THREAD ---")
+    print(f"Thread ID: {thread_id}")
+    try:
+        from agent import memory
+        memory.delete_thread(thread_id)
+        print("Successfully deleted thread from Redis.")
+        return {"status": "success", "message": "Chat thread deleted"}
+    except Exception as e:
+        print(f"Error deleting thread: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Mount static files (Frontend UI)
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 

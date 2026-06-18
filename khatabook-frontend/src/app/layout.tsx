@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 
 import Navbar from "@/components/Navbar";
 import ThemeProvider from "@/components/ThemeProvider";
+import SessionTimeout from "@/components/SessionTimeout";
 
 export default function RootLayout({
   children,
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider />
         <Navbar />
+        <SessionTimeout />
         <div className="page-wrapper">
           {children}
         </div>
