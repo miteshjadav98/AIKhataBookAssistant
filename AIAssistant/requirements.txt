@@ -11,3 +11,7 @@ pydantic
 sarvamai
 redis
 langgraph-checkpoint-redis
+# RAG / knowledge base
+faiss-cpu
+pypdf
+python-multipart

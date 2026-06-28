@@ -5,6 +5,7 @@ import { LoginDto } from './dto/login.dto';
 import { GoogleAuthDto } from './dto/google-auth.dto';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../utils/jwt.util';
 
 interface GoogleTokenPayload {
   sub: string;       // Google user ID
@@ -44,9 +45,9 @@ export class AuthService {
       console.log('[AuthService.register] Password hashed successfully');
 
       // 3. Create Shop + Admin User atomically
-      // Generate a short 6-character alphanumeric code for the shop
-      const shopCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      
+      // Generate a unique short alphanumeric code for the shop
+      const shopCode = await this.generateUniqueShopCode();
+
       const result = await this.prisma.$transaction(async (tx) => {
         // Create the shop first
         const shop = await tx.shop.create({
@@ -260,7 +261,7 @@ export class AuthService {
       // Case 3: Brand new user → auto-register with a default shop
       console.log('[AuthService.googleAuth] Creating new user via Google:', email);
 
-      const shopCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const shopCode = await this.generateUniqueShopCode();
       const displayName = name || email.split('@')[0];
 
       const result = await this.prisma.$transaction(async (tx) => {
@@ -412,10 +413,26 @@ export class AuthService {
   }
 
   /**
+   * Generate a short, unique alphanumeric shop code.
+   * Retries on the (rare) chance of a collision so we never throw a unique-constraint
+   * error to the user mid-registration.
+   */
+  private async generateUniqueShopCode(maxAttempts = 5): Promise<string> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const shopCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const existing = await this.prisma.shop.findUnique({ where: { shopCode } });
+      if (!existing) {
+        return shopCode;
+      }
+    }
+    throw new InternalServerErrorException('Could not generate a unique shop code, please retry.');
+  }
+
+  /**
    * Generate a JWT token containing user info for authentication.
    */
   private generateToken(user: { id: string; email: string; role: string; shopId: string }): string {
-    const secret = process.env.JWT_SECRET || 'mjrockseverybody';
+    const secret = getJwtSecret();
     const payload = {
       sub: user.id,
       email: user.email,

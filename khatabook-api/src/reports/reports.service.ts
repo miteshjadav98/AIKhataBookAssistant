@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
+import { toNum, round2 } from '../utils/money';
 
 @Injectable()
 export class ReportsService {
@@ -47,9 +48,13 @@ export class ReportsService {
     const customerMap = new Map<string, any>();
 
     invoices.forEach(inv => {
-      totalSales += inv.subtotal;
-      totalPaid += inv.paidAmount;
-      totalDue += inv.dueAmount;
+      const invSubtotal = toNum(inv.subtotal);
+      const invPaid = toNum(inv.paidAmount);
+      const invDue = toNum(inv.dueAmount);
+
+      totalSales += invSubtotal;
+      totalPaid += invPaid;
+      totalDue += invDue;
 
       const custId = inv.customerId;
       if (!customerMap.has(custId)) {
@@ -65,9 +70,9 @@ export class ReportsService {
       }
 
       const c = customerMap.get(custId)!;
-      c.totalPurchases += inv.subtotal;
-      c.totalPaid += inv.paidAmount;
-      c.totalDue += inv.dueAmount;
+      c.totalPurchases += invSubtotal;
+      c.totalPaid += invPaid;
+      c.totalDue += invDue;
       c.invoiceCount += 1;
     });
 
@@ -80,9 +85,9 @@ export class ReportsService {
 
     const result = {
       salesSummary: {
-        totalSales,
-        totalPaid,
-        totalDue,
+        totalSales: round2(totalSales),
+        totalPaid: round2(totalPaid),
+        totalDue: round2(totalDue),
         invoiceCount: invoices.length
       },
       customerSummary: Array.from(customerMap.values()),

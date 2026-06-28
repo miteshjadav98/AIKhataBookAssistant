@@ -19,6 +19,12 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Graphify code-knowledge-graph output (generated, can be rebuilt with `graphify update .`)
+graphify-out/
+
+# AI assistant RAG vector store (generated; rebuild with `python ingest_kb.py`)
+AIAssistant/kb_store/
+
 # IDEs
 .vscode/
 .idea/

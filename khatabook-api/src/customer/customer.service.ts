@@ -7,6 +7,8 @@ import { CustomerLoginDto } from './dto/customer-login.dto';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import { calculateInterest } from '../utils/interest';
+import { getJwtSecret } from '../utils/jwt.util';
+import { toNum } from '../utils/money';
 
 @Injectable()
 export class CustomerService {
@@ -104,8 +106,35 @@ export class CustomerService {
   /**
    * Admin views all customers in their shop (excluding soft-deleted).
    */
-  async getCustomersByShop(shopId: string) {
-    console.log('[CustomerService.getCustomersByShop] Called for shopId:', shopId);
+  async getCustomersByShop(shopId: string, search?: string) {
+    console.log('[CustomerService.getCustomersByShop] Called for shopId:', shopId, 'search:', search);
+
+    const term = search?.trim();
+    const select = {
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      totalReceivable: true,
+      isTemporaryPassword: true,
+      createdAt: true,
+    };
+
+    // Filtered searches hit the DB directly (server-side filter) and skip the list cache.
+    if (term) {
+      return this.prisma.customer.findMany({
+        where: {
+          shopId,
+          isDeleted: false,
+          OR: [
+            { name: { contains: term, mode: 'insensitive' } },
+            { phone: { contains: term } },
+          ],
+        },
+        select,
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
     const cacheKey = `customers_shop_${shopId}`;
     const cached = await this.cacheManager.get(cacheKey);
@@ -118,15 +147,7 @@ export class CustomerService {
     try {
       const customers = await this.prisma.customer.findMany({
         where: { shopId, isDeleted: false },
-        select: {
-          id: true,
-          name: true,
-          phone: true,
-          email: true,
-          totalReceivable: true,
-          isTemporaryPassword: true,
-          createdAt: true,
-        },
+        select,
         orderBy: { createdAt: 'desc' },
       });
 
@@ -421,7 +442,7 @@ export class CustomerService {
       data: { lastLoginAt: new Date() },
     });
 
-    const secret = process.env.JWT_SECRET || 'mjrockseverybody';
+    const secret = getJwtSecret();
     const token = jwt.sign(
       {
         sub: customer.id,
@@ -544,13 +565,14 @@ export class CustomerService {
 
       console.log('[CustomerService.getMyBalance] Balance:', customer.totalReceivable);
 
+      const receivable = toNum(customer.totalReceivable);
       const result = {
         id: customer.id,
         name: customer.name,
         phone: customer.phone,
-        totalReceivable: customer.totalReceivable,
-        balanceStatus: customer.totalReceivable <= 0 ? 'CLEAR' : 'DUE',
-        amountOwed: customer.totalReceivable > 0 ? customer.totalReceivable : 0,
+        totalReceivable: receivable,
+        balanceStatus: receivable <= 0 ? 'CLEAR' : 'DUE',
+        amountOwed: receivable > 0 ? receivable : 0,
         shopName: customer.shop.name,
         shopInterestRate: customer.shop.interestRate,
       };

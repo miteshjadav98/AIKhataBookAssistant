@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseDto } from './dto/create-purchase.dto';
+import { round2 } from '../utils/money';
 
 @Injectable()
 export class PurchaseService {
@@ -19,7 +20,7 @@ export class PurchaseService {
     });
     if (!supplier) throw new NotFoundException('Supplier not found');
 
-    const dueAmount = data.subtotal - data.discount - data.paidAmount;
+    const dueAmount = round2(data.subtotal - data.discount - data.paidAmount);
 
     const result = await this.prisma.$transaction(async (tx) => {
       // 1. Create Purchase record

@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import * as jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../../../utils/jwt.util';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -16,9 +17,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const token = authHeader.split(' ')[1];
     try {
-      // In a real app, use @nestjs/jwt and ConfigService instead of process.env directly
-      const secret = process.env.JWT_SECRET || 'mjrockseverybody';
-      const decoded = jwt.verify(token, secret);
+      const decoded = jwt.verify(token, getJwtSecret());
       request.user = decoded;
       return true;
     } catch (err) {

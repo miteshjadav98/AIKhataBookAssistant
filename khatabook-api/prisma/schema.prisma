@@ -69,7 +69,7 @@ model Customer {
   gstin               String?
   billingAddress      String?
   shippingAddress     String?
-  totalReceivable     Float     @default(0) // Customer Due (Amount To Receive)
+  totalReceivable     Decimal   @default(0) // Customer Due (Amount To Receive)
   isTemporaryPassword Boolean   @default(true)
   passwordUpdatedAt   DateTime?
   isDeleted           Boolean   @default(false)
@@ -95,7 +95,7 @@ model Supplier {
   gstin           String?
   billingAddress  String?
   shippingAddress String?
-  totalPayable    Float     @default(0) // Supplier Due (Amount To Pay)
+  totalPayable    Decimal   @default(0) // Supplier Due (Amount To Pay)
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?
   createdAt       DateTime  @default(now())
@@ -128,8 +128,8 @@ model Product {
   barcode              String?
   category             String?
   stockQty             Float       @default(0)
-  defaultPurchasePrice Float       @default(0)
-  defaultSellingPrice  Float       @default(0)
+  defaultPurchasePrice Decimal     @default(0)
+  defaultSellingPrice  Decimal     @default(0)
   lowStockThreshold    Float       @default(10)
   unit                 ProductUnit @default(PIECES)
   isDeleted            Boolean     @default(false)
@@ -147,10 +147,10 @@ model Purchase {
   supplierId    String         
   invoiceNumber String?
   items         Json
-  subtotal      Float
-  paidAmount    Float          @default(0)
-  discount      Float          @default(0)
-  dueAmount     Float          @default(0)
+  subtotal      Decimal
+  paidAmount    Decimal        @default(0)
+  discount      Decimal        @default(0)
+  dueAmount     Decimal        @default(0)
   paymentMode   PaymentMode    @default(CASH)
   notes         String?
   lastEditedAt  DateTime?
@@ -169,12 +169,12 @@ model SalesTransaction {
   customerId    String      
   invoiceNumber String?
   items         Json
-  subtotal      Float
-  paidAmount    Float       @default(0)
-  discount      Float       @default(0)
-  dueAmount     Float       @default(0)
+  subtotal      Decimal
+  paidAmount    Decimal     @default(0)
+  discount      Decimal     @default(0)
+  dueAmount     Decimal     @default(0)
   paymentMode   PaymentMode @default(CASH)
-  profit        Float       @default(0)
+  profit        Decimal     @default(0)
   notes         String?
   lastEditedAt  DateTime?
   editCount     Int         @default(0)
@@ -234,9 +234,9 @@ model Payment {
   id          String      @id @default(uuid())
   shopId      String      
   type        PaymentType
-  customerId  String?     
-  supplierId  String?     
-  amount      Float
+  customerId  String?
+  supplierId  String?
+  amount      Decimal
   paymentMode PaymentMode
   notes       String?
   createdAt   DateTime    @default(now())
@@ -248,8 +248,8 @@ model Payment {
 
 model Expense {
   id          String      @id @default(uuid())
-  shopId      String      
-  amount      Float
+  shopId      String
+  amount      Decimal
   category    String
   description String?
   paymentMode PaymentMode @default(CASH)

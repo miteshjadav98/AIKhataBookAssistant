@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSalesDto } from './dto/create-sales.dto';
+import { toNum, round2 } from '../utils/money';
 
 @Injectable()
 export class SalesService {
@@ -42,8 +43,8 @@ export class SalesService {
 
         const totalItemPrice = item.qty * item.sellingPrice;
         subtotal += totalItemPrice;
-        
-        const purchasePriceSnapshot = product.defaultPurchasePrice;
+
+        const purchasePriceSnapshot = toNum(product.defaultPurchasePrice);
         const profit = (item.sellingPrice - purchasePriceSnapshot) * item.qty;
         totalProfit += profit;
 
@@ -76,7 +77,7 @@ export class SalesService {
         });
       }
 
-      const dueAmount = subtotal - data.discount - data.paidAmount;
+      const dueAmount = round2(subtotal - data.discount - data.paidAmount);
 
       // 2. Generate Auto Invoice Number if not provided
       let finalInvoiceNumber = data.invoiceNumber;
@@ -107,12 +108,12 @@ export class SalesService {
           customerId: data.customerId,
           invoiceNumber: finalInvoiceNumber,
           items: salesItems,
-          subtotal,
+          subtotal: round2(subtotal),
           discount: data.discount,
           paidAmount: data.paidAmount,
           dueAmount,
           paymentMode: data.paymentMode,
-          profit: totalProfit - data.discount,
+          profit: round2(totalProfit - data.discount),
           notes: data.notes,
         },
       });
@@ -148,8 +149,27 @@ export class SalesService {
     return result;
   }
 
-  async getSales(shopId: string) {
-    console.log('[SalesService.getSales] Called for shopId:', shopId);
+  async getSales(shopId: string, opts: { customerId?: string; date?: string } = {}) {
+    console.log('[SalesService.getSales] Called for shopId:', shopId, 'opts:', opts);
+
+    const where: any = { shopId };
+    if (opts.customerId) {
+      where.customerId = opts.customerId;
+    }
+    if (opts.date === 'today') {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      where.createdAt = { gte: startOfToday };
+    }
+
+    // Filtered queries hit the DB directly and skip the full-list cache.
+    if (opts.customerId || opts.date) {
+      return this.prisma.salesTransaction.findMany({
+        where,
+        include: { customer: true },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
     const cacheKey = `sales_shop_${shopId}`;
     const cached = await this.cacheManager.get(cacheKey);
@@ -210,7 +230,7 @@ export class SalesService {
 
     // Check 24-hour window for financial edits
     const hoursSinceCreation = (Date.now() - new Date(sale.createdAt).getTime()) / (1000 * 60 * 60);
-    const isFinancialEdit = data.discount !== undefined && data.discount !== sale.discount;
+    const isFinancialEdit = data.discount !== undefined && data.discount !== toNum(sale.discount);
 
     if (isFinancialEdit && hoursSinceCreation > 24) {
       throw new BadRequestException('Financial edits are only allowed within 24 hours of creation');
@@ -221,8 +241,8 @@ export class SalesService {
     if (data.invoiceNumber !== undefined && data.invoiceNumber !== sale.invoiceNumber) {
       changes.push(`Invoice: ${sale.invoiceNumber || '—'} → ${data.invoiceNumber || '—'}`);
     }
-    if (data.discount !== undefined && data.discount !== sale.discount) {
-      changes.push(`Discount: ₹${sale.discount} → ₹${data.discount}`);
+    if (data.discount !== undefined && data.discount !== toNum(sale.discount)) {
+      changes.push(`Discount: ₹${toNum(sale.discount)} → ₹${data.discount}`);
     }
     if (data.notes !== undefined && data.notes !== sale.notes) {
       changes.push(`Notes updated`);
@@ -231,9 +251,9 @@ export class SalesService {
     const beforeSnapshot = { ...sale };
 
     // Calculate new values
-    const newDiscount = data.discount !== undefined ? data.discount : sale.discount;
-    const newDueAmount = sale.subtotal - newDiscount - sale.paidAmount;
-    const dueDifference = newDueAmount - sale.dueAmount;
+    const newDiscount = data.discount !== undefined ? data.discount : toNum(sale.discount);
+    const newDueAmount = round2(toNum(sale.subtotal) - newDiscount - toNum(sale.paidAmount));
+    const dueDifference = round2(newDueAmount - toNum(sale.dueAmount));
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Update the sale

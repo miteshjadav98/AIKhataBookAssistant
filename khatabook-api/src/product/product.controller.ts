@@ -1,8 +1,8 @@
 import {
   Controller, Post, Get, Put, Delete,
-  Body, Req, Param, UseGuards, BadRequestException,
+  Body, Req, Param, Query, UseGuards, BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ProductService } from './product.service';
 import { CreateProductSchema } from './dto/create-product.dto';
 import type { CreateProductDto } from './dto/create-product.dto';
@@ -44,10 +44,13 @@ export class ProductController {
 
   @Get()
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'List all products in your shop' })
+  @ApiOperation({ summary: 'List products in your shop (optionally only low-stock items)' })
+  @ApiQuery({ name: 'lowStock', required: false, description: 'Set to "true" to only return products at/below their low-stock threshold' })
   @ApiResponse({ status: 200, description: 'Array of products with their IDs' })
-  async getAll(@Req() req: any) {
-    const products = await this.productService.getProducts(req.user.shopId);
+  async getAll(@Req() req: any, @Query('lowStock') lowStock?: string) {
+    const products = await this.productService.getProducts(req.user.shopId, {
+      lowStockOnly: lowStock === 'true',
+    });
     return { status: 'success', data: products };
   }
 

@@ -58,11 +58,12 @@ export class CustomerController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Admin: View all customers in your shop' })
+  @ApiOperation({ summary: 'Admin: View all customers in your shop (optionally filtered by name/phone)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Filter customers by name or phone' })
   @ApiResponse({ status: 200, description: 'List of all active customers' })
-  async getCustomers(@Req() req: any) {
+  async getCustomers(@Req() req: any, @Query('search') search?: string) {
     const shopId = req.user.shopId;
-    const customers = await this.customerService.getCustomersByShop(shopId);
+    const customers = await this.customerService.getCustomersByShop(shopId, search);
 
     return {
       status: 'success',

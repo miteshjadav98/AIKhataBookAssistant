@@ -4,6 +4,7 @@ import { PrismaService } from './prisma/prisma.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles/roles.guard';
 import { Roles } from './auth/decorators/roles.decorator';
+import { toNum, round2 } from './utils/money';
 
 @Controller()
 export class AppController {
@@ -25,12 +26,12 @@ export class AppController {
     
     // Total Receivables (Customers Due)
     const customers = await this.prisma.customer.findMany({ where: { shopId, isDeleted: false } });
-    const totalDue = customers.reduce((sum, c) => sum + (c.totalReceivable || 0), 0);
-    const customersWithDue = customers.filter(c => (c.totalReceivable || 0) > 0).length;
+    const totalDue = round2(customers.reduce((sum, c) => sum + toNum(c.totalReceivable), 0));
+    const customersWithDue = customers.filter(c => toNum(c.totalReceivable) > 0).length;
 
     // Total Payables (Suppliers Due)
     const suppliers = await this.prisma.supplier.findMany({ where: { shopId, isDeleted: false } });
-    const totalCollected = suppliers.reduce((sum, s) => sum + (s.totalPayable || 0), 0); // This is payable
+    const totalCollected = round2(suppliers.reduce((sum, s) => sum + toNum(s.totalPayable), 0)); // This is payable
 
     // Monthly Sales
     const startOfMonth = new Date();
@@ -40,13 +41,13 @@ export class AppController {
     const sales = await this.prisma.salesTransaction.findMany({
       where: { shopId, createdAt: { gte: startOfMonth } },
     });
-    const overdueAmount = sales.reduce((sum, s) => sum + s.subtotal, 0); // This is Monthly Sales
+    const overdueAmount = round2(sales.reduce((sum, s) => sum + toNum(s.subtotal), 0)); // This is Monthly Sales
 
     // Monthly Purchases
     const purchases = await this.prisma.purchase.findMany({
       where: { shopId, createdAt: { gte: startOfMonth } },
     });
-    const monthlyRevenue = purchases.reduce((sum, p) => sum + p.subtotal, 0); // This is Monthly Purchases
+    const monthlyRevenue = round2(purchases.reduce((sum, p) => sum + toNum(p.subtotal), 0)); // This is Monthly Purchases
 
     return {
       status: 'success',

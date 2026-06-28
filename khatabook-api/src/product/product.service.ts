@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
+import { toNum } from '../utils/money';
 
 @Injectable()
 export class ProductService {
@@ -48,30 +49,34 @@ export class ProductService {
   /**
    * Get all products for a shop (excluding soft-deleted).
    */
-  async getProducts(shopId: string) {
-    console.log('[ProductService.getProducts] Called for shopId:', shopId);
+  async getProducts(shopId: string, opts: { lowStockOnly?: boolean } = {}) {
+    console.log('[ProductService.getProducts] Called for shopId:', shopId, 'opts:', opts);
 
     const cacheKey = `products_shop_${shopId}`;
-    const cached = await this.cacheManager.get(cacheKey);
-    if (cached) {
+    let products: any[] | undefined = await this.cacheManager.get(cacheKey);
+    if (products) {
       console.log('[ProductService.getProducts] CACHE HIT for:', cacheKey);
-      return cached;
+    } else {
+      console.log('[ProductService.getProducts] CACHE MISS for:', cacheKey);
+      try {
+        products = await this.prisma.product.findMany({
+          where: { shopId, isDeleted: false },
+          orderBy: { name: 'asc' },
+        });
+        console.log('[ProductService.getProducts] Found', products.length, 'products');
+        await this.cacheManager.set(cacheKey, products, 300000);
+      } catch (error) {
+        console.error('[ProductService.getProducts] ERROR:', error.message || error);
+        throw error;
+      }
     }
-    console.log('[ProductService.getProducts] CACHE MISS for:', cacheKey);
 
-    try {
-      const products = await this.prisma.product.findMany({
-        where: { shopId, isDeleted: false },
-        orderBy: { name: 'asc' },
-      });
-
-      console.log('[ProductService.getProducts] Found', products.length, 'products');
-      await this.cacheManager.set(cacheKey, products, 300000);
-      return products;
-    } catch (error) {
-      console.error('[ProductService.getProducts] ERROR:', error.message || error);
-      throw error;
+    // Low-stock filtering is done in-memory because it compares two columns
+    // (stockQty vs. each product's own lowStockThreshold), which Prisma can't express in a where.
+    if (opts.lowStockOnly) {
+      return products.filter((p) => p.stockQty <= p.lowStockThreshold);
     }
+    return products;
   }
 
   /**
@@ -103,9 +108,10 @@ export class ProductService {
     });
 
     // Calculate margin
-    const margin = product.defaultSellingPrice - product.defaultPurchasePrice;
-    const marginPercent = product.defaultPurchasePrice > 0 
-      ? ((margin / product.defaultPurchasePrice) * 100).toFixed(1) 
+    const purchasePrice = toNum(product.defaultPurchasePrice);
+    const margin = toNum(product.defaultSellingPrice) - purchasePrice;
+    const marginPercent = purchasePrice > 0
+      ? ((margin / purchasePrice) * 100).toFixed(1)
       : '0';
 
     const result = {

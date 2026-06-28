@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Put, Param, UseGuards, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, Param, Query, UseGuards, Req, BadRequestException } from '@nestjs/common';
 import { SalesService } from './sales.service';
 import type { CreateSalesDto } from './dto/create-sales.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth/jwt-auth.guard';
@@ -21,8 +21,12 @@ export class SalesController {
   }
 
   @Get()
-  async getSales(@Req() req: any) {
-    const result = await this.salesService.getSales(req.user.shopId);
+  async getSales(
+    @Req() req: any,
+    @Query('customerId') customerId?: string,
+    @Query('date') date?: string,
+  ) {
+    const result = await this.salesService.getSales(req.user.shopId, { customerId, date });
     return { status: 'success', data: result };
   }
 
