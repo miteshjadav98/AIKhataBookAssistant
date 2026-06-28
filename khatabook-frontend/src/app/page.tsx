@@ -11,7 +11,7 @@ export default function Home() {
         </h1>
         
         <p className={styles.subtitle}>
-          The modern solution to manage your customers, track उधार (Udhar) &amp; जमा (Jama), and grow your business with a beautiful interface.
+          The modern solution to manage your customers, track credit &amp; payments, and grow your business with a beautiful interface.
         </p>
 
         <div className={styles.ctas}>
@@ -34,9 +34,9 @@ export default function Home() {
 
           <div className={`${styles.featureCard} glass-panel delay-200 animate-fade-in`}>
             <div className={styles.featureIcon}>📒</div>
-            <h3 className={styles.featureTitle}>Udhar / Jama Ledger</h3>
+            <h3 className={styles.featureTitle}>Credit &amp; Payment Ledger</h3>
             <p className={styles.featureText}>
-              Record credit (उधार) and payments (जमा) with running balance and interest tracking.
+              Record credit and payments with running balance and interest tracking.
             </p>
           </div>
 

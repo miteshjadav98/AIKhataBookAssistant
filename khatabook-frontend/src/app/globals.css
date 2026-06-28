@@ -208,6 +208,18 @@ button {
   color: var(--text-primary);
 }
 
+/* A button rendered inline with the nav links (e.g. Support) */
+.nav-link--button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
 .login-btn {
   padding: 0.5rem 1.25rem;
   font-size: 0.9rem;
@@ -741,8 +753,15 @@ button {
     font-size: 1rem;
   }
 
+  /* Any data table scrolls horizontally on small screens instead of being
+     clipped by the body's overflow-x: hidden. Covers detail/report tables
+     that aren't wrapped in a scroll container. */
   .data-table {
     font-size: 0.8rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .data-table th, .data-table td {

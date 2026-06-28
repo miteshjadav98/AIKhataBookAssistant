@@ -6,6 +6,9 @@ venv/
 .venv/
 env/
 .env
+**/.env
+.env*
+.claude/
 
 # Node
 node_modules/

@@ -108,9 +108,9 @@ python -m venv venv
 pip install -r requirements.txt
 
 # Start the FastAPI server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 8002
 ```
-*The AI server will run on `http://localhost:8000`.*
+*The AI server will run on `http://localhost:8002`.*
 
 **Environment Variables (`AIAssistant/.env`):**
 ```env

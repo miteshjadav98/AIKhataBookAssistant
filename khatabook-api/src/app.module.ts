@@ -11,6 +11,7 @@ import { PurchaseModule } from './purchase/purchase.module';
 import { SalesModule } from './sales/sales.module';
 import { PaymentModule } from './payment/payment.module';
 import { ReportsModule } from './reports/reports.module';
+import { SupportModule } from './support/support.module';
 import { SystemController } from './system/system.controller';
 import KeyvRedis from '@keyv/redis';
 import { Keyv } from 'keyv';
@@ -44,6 +45,7 @@ import { Keyv } from 'keyv';
     SalesModule,
     PaymentModule,
     ReportsModule,
+    SupportModule,
   ],
   controllers: [AppController, SystemController],
   providers: [AppService],

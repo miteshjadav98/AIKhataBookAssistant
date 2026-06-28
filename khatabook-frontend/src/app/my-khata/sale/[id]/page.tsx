@@ -153,7 +153,7 @@ export default function CustomerSaleDetailPage() {
             <span style={{ fontWeight: 600, color: "#22c55e" }}>₹{sale.paidAmount?.toLocaleString("en-IN")}</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
-            <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{sale.dueAmount > 0 ? "Balance Due (बकाया)" : "Total"}</span>
+            <span style={{ fontWeight: 700, fontSize: "1.1rem" }}>{sale.dueAmount > 0 ? "Balance Due" : "Total"}</span>
             <span style={{ fontWeight: 700, fontSize: "1.1rem", color: sale.dueAmount > 0 ? "#ef4444" : "#22c55e" }}>
               ₹{sale.dueAmount > 0 ? sale.dueAmount?.toLocaleString("en-IN") : sale.paidAmount?.toLocaleString("en-IN")}
             </span>

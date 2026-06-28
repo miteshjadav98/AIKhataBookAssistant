@@ -102,7 +102,7 @@ export default function CustomerDetailPage() {
       {/* Metric Cards */}
       <div className="metrics-grid" style={{ marginBottom: "2rem" }}>
         <div className="metric-card glass-panel" style={{ background: customer.totalReceivable > 0 ? "rgba(239, 68, 68, 0.08)" : "rgba(34, 197, 94, 0.08)" }}>
-          <div className="metric-label">Outstanding Balance (बकाया)</div>
+          <div className="metric-label">Outstanding Balance</div>
           <div className="metric-value" style={{ color: customer.totalReceivable > 0 ? "#ef4444" : "#22c55e" }}>
             ₹{Math.abs(customer.totalReceivable || 0).toLocaleString("en-IN")}
           </div>
@@ -166,8 +166,8 @@ export default function CustomerDetailPage() {
               <tr>
                 <th>Date</th>
                 <th>Description</th>
-                <th>Debit (उधार)</th>
-                <th>Credit (जमा)</th>
+                <th>Debit</th>
+                <th>Credit</th>
                 <th>Due</th>
               </tr>
             </thead>

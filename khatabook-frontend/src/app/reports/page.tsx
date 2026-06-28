@@ -154,15 +154,15 @@ export default function ReportsPage() {
           <div className="metrics-grid">
             <div className="metric-card revenue">
               <div className="metric-label">Total Sales</div>
-              <div className="metric-value">₹{reportData.salesSummary.totalSales.toFixed(2)}</div>
+              <div className="metric-value">₹{Number(reportData.salesSummary.totalSales || 0).toFixed(2)}</div>
             </div>
             <div className="metric-card collected">
               <div className="metric-label">Total Collected</div>
-              <div className="metric-value">₹{reportData.salesSummary.totalPaid.toFixed(2)}</div>
+              <div className="metric-value">₹{Number(reportData.salesSummary.totalPaid || 0).toFixed(2)}</div>
             </div>
             <div className="metric-card due">
               <div className="metric-label">Outstanding from Sales</div>
-              <div className="metric-value">₹{reportData.salesSummary.totalDue.toFixed(2)}</div>
+              <div className="metric-value">₹{Number(reportData.salesSummary.totalDue || 0).toFixed(2)}</div>
             </div>
             <div className="metric-card">
               <div className="metric-label">Invoices Count</div>
@@ -211,9 +211,9 @@ export default function ReportsPage() {
                       <td>{new Date(inv.createdAt).toLocaleDateString()}</td>
                       <td>{inv.invoiceNumber}</td>
                       <td>{inv.customer?.name || 'Walk-in'}</td>
-                      <td>₹{inv.subtotal.toFixed(2)}</td>
-                      <td style={{ color: '#22c55e' }}>₹{inv.paidAmount.toFixed(2)}</td>
-                      <td style={{ color: '#ef4444' }}>₹{inv.dueAmount.toFixed(2)}</td>
+                      <td>₹{Number(inv.subtotal || 0).toFixed(2)}</td>
+                      <td style={{ color: '#22c55e' }}>₹{Number(inv.paidAmount || 0).toFixed(2)}</td>
+                      <td style={{ color: '#ef4444' }}>₹{Number(inv.dueAmount || 0).toFixed(2)}</td>
                       <td>
                         {inv.pdfUrl && (
                           <a href={`${API_URL.replace('/api', '')}${inv.pdfUrl}`} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}>
@@ -249,9 +249,9 @@ export default function ReportsPage() {
                     <tr key={c.customerId}>
                       <td>{c.customerName}</td>
                       <td>{c.customerPhone}</td>
-                      <td>₹{c.totalPurchases.toFixed(2)}</td>
-                      <td style={{ color: '#22c55e' }}>₹{c.totalPaid.toFixed(2)}</td>
-                      <td style={{ color: '#ef4444' }}>₹{c.totalDue.toFixed(2)}</td>
+                      <td>₹{Number(c.totalPurchases || 0).toFixed(2)}</td>
+                      <td style={{ color: '#22c55e' }}>₹{Number(c.totalPaid || 0).toFixed(2)}</td>
+                      <td style={{ color: '#ef4444' }}>₹{Number(c.totalDue || 0).toFixed(2)}</td>
                       <td>{c.invoiceCount}</td>
                     </tr>
                   ))}
@@ -278,7 +278,7 @@ export default function ReportsPage() {
                     <tr key={c.id}>
                       <td>{c.name}</td>
                       <td>{c.phone || 'N/A'}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 'bold' }}>₹{c.totalReceivable.toFixed(2)}</td>
+                      <td style={{ color: '#ef4444', fontWeight: 'bold' }}>₹{Number(c.totalReceivable || 0).toFixed(2)}</td>
                     </tr>
                   ))}
                   {reportData.outstandingDues.length === 0 && (

@@ -15,3 +15,5 @@ langgraph-checkpoint-redis
 faiss-cpu
 pypdf
 python-multipart
+# tests (dev)
+pytest

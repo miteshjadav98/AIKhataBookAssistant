@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SupportTicketModal from "@/components/ai/SupportTicketModal";
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
   const pathname = usePathname();
 
@@ -79,6 +81,13 @@ export default function Navbar() {
               <Link href="/purchases" className="nav-link" onClick={() => setMenuOpen(false)}>Purchases</Link>
               <Link href="/reports" className="nav-link" onClick={() => setMenuOpen(false)}>Reports</Link>
               <Link href="/ai" className="nav-link" onClick={() => setMenuOpen(false)} style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>🤖 AI Copilot</Link>
+              <button
+                type="button"
+                className="nav-link nav-link--button"
+                onClick={() => { setSupportOpen(true); setMenuOpen(false); }}
+              >
+                <i className="fa-solid fa-life-ring" style={{ marginRight: "0.4rem" }}></i>Support
+              </button>
             </>
           )}
           {user?.type === "CUSTOMER" && (
@@ -153,6 +162,8 @@ export default function Navbar() {
           onClick={() => setMenuOpen(false)}
         />
       )}
+
+      <SupportTicketModal open={supportOpen} onClose={() => setSupportOpen(false)} />
     </header>
   );
 }

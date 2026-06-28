@@ -6,6 +6,7 @@ import LedgerCard from "@/components/ai/LedgerCard";
 import InvoicePreviewCard from "@/components/ai/InvoicePreviewCard";
 import SalesSummaryCard from "@/components/ai/SalesSummaryCard";
 import LowStockAlertCard from "@/components/ai/LowStockAlertCard";
+import SupportTicketModal from "@/components/ai/SupportTicketModal";
 import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
@@ -26,13 +27,15 @@ export default function AIOperatingSystem() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [userName, setUserName] = useState<string>("Shopkeeper");
   const [sttLang, setSttLang] = useState<string>("en-IN");
-  
+  const [showSupport, setShowSupport] = useState(false);
+
   const threadIdRef = useRef<string>("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recognitionRef = useRef<any>(null);
   const inputRef = useRef<string>("");
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const micPermissionRef = useRef<boolean>(false);
 
   useEffect(() => {
     inputRef.current = input;
@@ -49,16 +52,26 @@ export default function AIOperatingSystem() {
     try {
         const parsedUser = JSON.parse(userStr);
         setUserName(parsedUser.name || "Shopkeeper");
-        setMessages([{ 
-            role: "system", 
-            content: `Hello ${parsedUser.name || ''}! I am your AI Business Copilot. How can I help you manage your shop today?` 
-        }]);
+        
+        const savedThread = sessionStorage.getItem("ai_thread_id");
+        const savedMessages = sessionStorage.getItem("ai_messages");
+        
+        if (savedThread && savedMessages) {
+            threadIdRef.current = savedThread;
+            setMessages(JSON.parse(savedMessages));
+        } else {
+            threadIdRef.current = uuidv4();
+            sessionStorage.setItem("ai_thread_id", threadIdRef.current);
+            setMessages([{ 
+                role: "system", 
+                content: `Hello ${parsedUser.name || ''}! I am your AI Business Copilot. How can I help you manage your shop today?` 
+            }]);
+        }
     } catch (e) {
+        threadIdRef.current = uuidv4();
+        sessionStorage.setItem("ai_thread_id", threadIdRef.current);
         setMessages([{ role: "system", content: "Hello! I am your AI Business Copilot. How can I help you manage your shop today?" }]);
     }
-    
-    // Generate a unique thread ID for LangGraph memory
-    threadIdRef.current = uuidv4();
     
     audioRef.current = new Audio();
     
@@ -75,10 +88,11 @@ export default function AIOperatingSystem() {
         // 15 minutes idle - end chat
         if (threadIdRef.current) {
           try {
-            const AI_URL = window.location.hostname === 'localhost' 
-              ? "/ai-api/api/chat" 
+            const AI_URL = window.location.hostname === 'localhost'
+              ? "/ai-api/api/chat"
               : "https://ai.miteklabs.tech/api/chat";
-            await fetch(`${AI_URL}/${threadIdRef.current}`, { method: 'DELETE' });
+            const token = localStorage.getItem("token");
+            await fetch(`${AI_URL}/${threadIdRef.current}?token=${encodeURIComponent(token || "")}`, { method: 'DELETE' });
           } catch(e) {}
         }
         if (audioRef.current) audioRef.current.pause();
@@ -109,94 +123,131 @@ export default function AIOperatingSystem() {
   }, [sttLang]);
 
   useEffect(() => {
+    if (messages.length > 0) {
+      sessionStorage.setItem("ai_messages", JSON.stringify(messages));
+    }
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Acquire microphone permission only ONCE. Re-running getUserMedia before every
+  // SpeechRecognition.start() contends with the mic that webkitSpeechRecognition acquires
+  // itself on mobile — that's why recording worked the first time but failed on later taps.
+  const ensureMicPermission = async (): Promise<boolean> => {
+    if (micPermissionRef.current) return true;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Non-secure / older context: let SpeechRecognition request the mic on its own.
+      micPermissionRef.current = true;
+      return true;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop());
+      micPermissionRef.current = true;
+      return true;
+    } catch (err) {
+      console.error("Mic permission denied", err);
+      alert("Microphone access denied! Please allow microphone permissions in your phone's browser settings (Site Settings -> Microphone) to use voice input.");
+      return false;
+    }
+  };
 
   const toggleRecording = async () => {
     if (isRecording) {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try { recognitionRef.current.stop(); } catch (e) {}
       }
       setIsRecording(false);
-    } else {
-      // Mobile audio unlock for voice inputs (Must be synchronous!)
-      if (audioRef.current) {
-        try {
-          audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.then(() => {
-              if (audioRef.current) audioRef.current.pause();
-            }).catch(() => {});
-          }
-        } catch (e) {}
-      }
+      return;
+    }
 
-      // Force microphone permission prompt if it's missing (fixes audio-capture error on mobile)
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in this browser.");
+      return;
+    }
+
+    // Stop any ongoing TTS so the audio-output session doesn't block mic capture on mobile.
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch (e) {}
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+    // Mobile audio unlock for later TTS autoplay (must be synchronous, inside the tap gesture).
+    if (audioRef.current) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err) {
-        console.error("Mic permission denied", err);
-        alert("Microphone access denied! Please allow microphone permissions in your phone's browser settings (Site Settings -> Microphone) to use voice input.");
-        return;
-      }
-
-      try {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
-
-        if (recognitionRef.current) {
-            recognitionRef.current.onend = null;
-            recognitionRef.current.onerror = null;
-            recognitionRef.current.onresult = null;
-            try { recognitionRef.current.abort(); } catch(e) {}
+        audioRef.current.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            if (audioRef.current) audioRef.current.pause();
+          }).catch(() => {});
         }
+      } catch (e) {}
+    }
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = sttLang;
-        
-        recognition.onstart = () => setIsRecording(true);
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInput(prev => prev ? `${prev} ${transcript}` : transcript);
-        };
-        recognition.onerror = (event: any) => {
-          if (event.error !== 'aborted' && event.error !== 'no-speech') {
-            console.error("Speech recognition error", event.error);
-          }
-          setIsRecording(false);
-        };
-        recognition.onend = () => {
-          setIsRecording(false);
-          // Auto-send when the browser naturally stops listening (silence detected)
-          if (inputRef.current.trim()) {
-            handleSend(inputRef.current);
-          }
-        };
+    // Request the mic only the first time (see ensureMicPermission).
+    const granted = await ensureMicPermission();
+    if (!granted) return;
 
-        recognitionRef.current = recognition;
-        recognition.start();
-      } catch(e) {
-        console.error("Failed to start recognition:", e);
-        setIsRecording(false);
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
+        try { recognitionRef.current.abort(); } catch (e) {}
       }
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = sttLang;
+
+      recognition.onstart = () => setIsRecording(true);
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        // Write the ref synchronously so onend (which can fire immediately after) reliably
+        // sees the latest text and auto-sends it — fixes occasional dropped voice messages.
+        const next = inputRef.current ? `${inputRef.current} ${transcript}` : transcript;
+        inputRef.current = next;
+        setInput(next);
+      };
+      recognition.onerror = (event: any) => {
+        if (event.error !== 'aborted' && event.error !== 'no-speech') {
+          console.error("Speech recognition error", event.error);
+        }
+        setIsRecording(false);
+      };
+      recognition.onend = () => {
+        setIsRecording(false);
+        // Auto-send when the browser naturally stops listening (silence detected).
+        if (inputRef.current.trim()) {
+          handleSend(inputRef.current);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.error("Failed to start recognition:", e);
+      setIsRecording(false);
     }
   };
 
   const clearChat = async () => {
     if (threadIdRef.current) {
       try {
-        const AI_URL = window.location.hostname === 'localhost' 
-          ? "/ai-api/api/chat" 
+        const AI_URL = window.location.hostname === 'localhost'
+          ? "/ai-api/api/chat"
           : "https://ai.miteklabs.tech/api/chat";
-        await fetch(`${AI_URL}/${threadIdRef.current}`, { method: 'DELETE' });
+        const token = localStorage.getItem("token");
+        await fetch(`${AI_URL}/${threadIdRef.current}?token=${encodeURIComponent(token || "")}`, { method: 'DELETE' });
       } catch(e) {}
     }
-    setMessages([{ role: "system", content: "Chat cleared. I'm ready for your next request!" }]);
     threadIdRef.current = uuidv4(); // Generate new thread id to reset backend memory
+    sessionStorage.setItem("ai_thread_id", threadIdRef.current);
+    const resetMsg: Message = { role: "system", content: "Chat cleared. I'm ready for your next request!" };
+    setMessages([resetMsg]);
+    sessionStorage.setItem("ai_messages", JSON.stringify([resetMsg]));
     if (audioRef.current) audioRef.current.pause();
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     router.push('/dashboard');
@@ -273,8 +324,21 @@ export default function AIOperatingSystem() {
         return;
       }
 
-      const data = await response.json();
-      
+      // Parse defensively: a gateway/proxy timeout or a restarting assistant can
+      // return an HTML error page, which would otherwise throw a cryptic
+      // "Unexpected token '<' ... is not valid JSON" inside the catch below.
+      const raw = await response.text();
+      let data: any = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        setMessages(prev => [...prev, {
+          role: "system",
+          content: "The assistant took too long or is temporarily unavailable. Please try again in a moment.",
+        }]);
+        return;
+      }
+
       if (response.ok) {
         setMessages(prev => [...prev, { 
           role: "assistant", 
@@ -328,7 +392,26 @@ export default function AIOperatingSystem() {
           </div>
         </div>
         <div className="ai-header-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button 
+          <button
+            onClick={() => setShowSupport(true)}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: '8px',
+              border: '1px solid #3b82f6',
+              background: 'rgba(59, 130, 246, 0.15)',
+              color: '#3b82f6',
+              cursor: 'pointer',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}
+            title="Raise / view a support ticket"
+          >
+            <i className="fa-solid fa-life-ring"></i> <span className="hide-mobile">Support</span>
+          </button>
+          <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="icon-btn"
             style={{ color: 'var(--text-secondary)' }}
@@ -481,6 +564,9 @@ export default function AIOperatingSystem() {
           </button>
         </form>
       </footer>
+
+      <SupportTicketModal open={showSupport} onClose={() => setShowSupport(false)} />
+
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes pulse {
           0% { transform: scale(1); box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }

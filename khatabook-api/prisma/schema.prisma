@@ -27,6 +27,7 @@ model Shop {
   payments           Payment[]
   expenses           Expense[]
   invoiceEditLogs    InvoiceEditLog[]
+  supportTickets     SupportTicket[]
 }
 
 enum Role {
@@ -262,9 +263,9 @@ model Expense {
 
 model InvoiceEditLog {
   id             String   @id @default(uuid())
-  invoiceId      String   
+  invoiceId      String
   invoiceType    String   // "SALE" | "PURCHASE"
-  shopId         String   
+  shopId         String
   reason         String
   changesSummary String
   beforeSnapshot Json
@@ -272,4 +273,37 @@ model InvoiceEditLog {
   editedAt       DateTime @default(now())
 
   shop Shop @relation(fields: [shopId], references: [id])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// Support tickets raised via the AI assistant's Support agent.
+// shopId = business_id, userId = the user who raised it (both from JWT).
+model SupportTicket {
+  id           String         @id @default(uuid())
+  shopId       String
+  userId       String
+  category     String
+  priority     TicketPriority @default(MEDIUM)
+  issueSummary String
+  issueDetails String?
+  status       TicketStatus   @default(OPEN)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id])
+
+  @@index([shopId])
 }

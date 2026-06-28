@@ -192,7 +192,7 @@ export default function CustomersPage() {
               <tr>
                 <th>Name</th>
                 <th>Contact</th>
-                <th>Balance (बकाया)</th>
+                <th>Balance</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -220,7 +220,7 @@ export default function CustomersPage() {
                   </td>
                   <td>
                     {c.isTemporaryPassword && <span className="badge badge-due">Temp Pass</span>}
-                    {c.totalReceivable > 0 && <span className="badge badge-udhar" style={{ marginLeft: "0.25rem" }}>Udhar</span>}
+                    {c.totalReceivable > 0 && <span className="badge badge-udhar" style={{ marginLeft: "0.25rem" }}>Due</span>}
                     {c.totalReceivable <= 0 && !c.isTemporaryPassword && <span className="badge badge-paid">Clear</span>}
                   </td>
                   <td>

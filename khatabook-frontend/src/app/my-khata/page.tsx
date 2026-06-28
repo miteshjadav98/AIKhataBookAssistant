@@ -199,7 +199,7 @@ export default function MyKhataPage() {
         <div className="metrics-grid">
           <div className="metric-card glass-panel" style={{ background: totalDue > 0 ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)" }}>
             <div className="metric-label" style={{ color: "var(--text-primary)" }}>
-              {totalDue > 0 ? "बकाया (Total Due)" : "Clear (No Due)"}
+              {totalDue > 0 ? "Total Due" : "Clear (No Due)"}
             </div>
             <div className="metric-value" style={{ color: totalDue > 0 ? "#ef4444" : "#22c55e" }}>
               ₹{Math.abs(totalDue).toLocaleString("en-IN")}
@@ -222,8 +222,8 @@ export default function MyKhataPage() {
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "2rem", marginBottom: "1rem", flexWrap: "wrap" }}>
         {([
           { key: "ALL", label: "All" },
-          { key: "UDHAR", label: "उधार (Sales)" },
-          { key: "JAMA", label: "जमा (Payments)" },
+          { key: "UDHAR", label: "Sales" },
+          { key: "JAMA", label: "Payments" },
           { key: "DUE", label: "⏳ Pending" },
         ] as const).map(({ key, label }) => (
           <button
@@ -238,7 +238,7 @@ export default function MyKhataPage() {
       </div>
 
       <h3 style={{ marginBottom: "1rem" }}>
-        {filter === "ALL" ? "Recent Transactions" : filter === "UDHAR" ? "Sales (उधार)" : filter === "JAMA" ? "Payments (जमा)" : "Pending Dues"}
+        {filter === "ALL" ? "Recent Transactions" : filter === "UDHAR" ? "Sales" : filter === "JAMA" ? "Payments" : "Pending Dues"}
         <span style={{ fontSize: "0.85rem", fontWeight: 400, color: "var(--text-secondary)", marginLeft: "0.5rem" }}>
           ({filtered.length})
         </span>
@@ -261,7 +261,7 @@ export default function MyKhataPage() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem", flexWrap: "wrap" }}>
                   <span className={`badge ${tx.type === "UDHAR" ? "badge-udhar" : "badge-jama"}`}>
-                    {tx.type === "UDHAR" ? "उधार" : "जमा"}
+                    {tx.type === "UDHAR" ? "Sale" : "Payment"}
                   </span>
                   <span className={`badge badge-${tx.status.toLowerCase()}`}>{tx.status}</span>
                   {tx.isEdited && (

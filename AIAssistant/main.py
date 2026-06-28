@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import json
 import requests
 from fastapi import FastAPI, Request, HTTPException, Depends, UploadFile, File, Form
@@ -11,7 +14,7 @@ from typing import List, Dict, Any
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.runnables.config import RunnableConfig
 
-from agent import create_shopkeeper_agent
+from agent import build_agent
 from schemas import AssistantResponse, parse_assistant_response
 from sarvamai import SarvamAI
 import rag
@@ -33,8 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create the agent instance
-agent = create_shopkeeper_agent()
+# Create the agent instance (supervisor multi-agent by default; AGENT_MODE=single for legacy)
+agent = build_agent()
 
 # Initialize SarvamAI client if key exists
 sarvam_api_key = os.getenv("SARVAM_API_KEY")
@@ -148,7 +151,7 @@ async def delete_chat_endpoint(thread_id: str, token: str = None):
     print(f"\n--- DELETING CHAT THREAD ---")
     print(f"Thread ID: {thread_id}")
     try:
-        from agent import memory
+        from checkpointer import memory
         memory.delete_thread(thread_id)
         print("Successfully deleted thread from Redis.")
         return {"status": "success", "message": "Chat thread deleted"}

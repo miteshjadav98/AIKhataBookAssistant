@@ -236,7 +236,7 @@ export default function SaleDetailPage() {
           </div>
           {(sale.discount || 0) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#22c55e" }}>Discount (Chhoot)</span>
+              <span style={{ color: "#22c55e" }}>Discount</span>
               <span style={{ fontWeight: 600, color: "#22c55e" }}>−₹{(sale.discount || 0).toLocaleString("en-IN")}</span>
             </div>
           )}

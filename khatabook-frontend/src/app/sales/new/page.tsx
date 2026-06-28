@@ -203,8 +203,8 @@ export default function NewSalesPage() {
             <div style={{ marginBottom: "1rem" }}>
               <label className="form-label">What to do with the remaining ₹{subtotal - (Number(paidAmount) || 0)}?</label>
               <select className="form-input" value={pendingAction} onChange={e => setPendingAction(e.target.value as any)}>
-                <option value="PENDING">Keep as Pending (Udhar)</option>
-                <option value="DISCOUNT">Give as Discount (Chhoot)</option>
+                <option value="PENDING">Keep as Pending</option>
+                <option value="DISCOUNT">Give as Discount</option>
               </select>
             </div>
           )}

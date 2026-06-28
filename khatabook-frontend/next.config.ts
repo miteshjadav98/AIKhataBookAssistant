@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
     "*.ngrok.app", 
     "*.ngrok.io"
   ],
+  experimental: {
+    proxyTimeout: 300000, // 5 minutes (prevents socket hang up when AI takes too long)
+  },
   async rewrites() {
     return [
       {
