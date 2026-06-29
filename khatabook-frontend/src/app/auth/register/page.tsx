@@ -55,7 +55,7 @@ export default function RegisterPage() {
       localStorage.setItem("token", data.data.token);
       localStorage.setItem("user", JSON.stringify(data.data.user));
 
-      router.push("/workspace");
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("[Google Register] Error:", err);
       setError(err.message);

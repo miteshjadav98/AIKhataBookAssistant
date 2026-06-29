@@ -89,7 +89,7 @@ export default function SupportTicketModal({ open, onClose }: SupportTicketModal
     <div
       onClick={onClose}
       style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1000,
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 1400,
         display: "flex", justifyContent: "center", alignItems: "flex-start", padding: "2rem 1rem", overflowY: "auto",
       }}
     >

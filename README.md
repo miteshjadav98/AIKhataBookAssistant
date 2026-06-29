@@ -1,10 +1,11 @@
 <div align="center">
   <h1>🌟 AI KhataBook</h1>
-  <p><strong>A Next-Generation CRM and AI Voice Assistant Ecosystem for Shopkeepers</strong></p>
+  <p><strong>A Next-Generation CRM with an embedded AI Copilot for Shopkeepers</strong></p>
 </div>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-16.2-black?style=for-the-badge&logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react" alt="React" />
   <img src="https://img.shields.io/badge/NestJS-11.0-ea2845?style=for-the-badge&logo=nestjs" alt="NestJS" />
   <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Prisma-7.8-2D3748?style=for-the-badge&logo=prisma" alt="Prisma" />
@@ -13,116 +14,146 @@
 
 ## 📖 Overview
 
-**AI KhataBook** is a comprehensive solution designed to empower local shopkeepers and small businesses with modern digital tools. It combines a robust ledger management system (KhataBook) with an advanced AI Voice Assistant, allowing shopkeepers to interact with their business data naturally through voice commands in multiple regional languages.
+**AI KhataBook** empowers local shopkeepers and small businesses with modern digital tools. It pairs a full-featured CRM and ledger system with **BizzChat**, an embedded AI Copilot that lets shopkeepers query and manage their business conversationally — by text or voice — in English, Hindi, or Gujarati.
 
 ## 🏗️ Architecture
 
-The ecosystem is divided into three core microservices:
+The ecosystem is split into three microservices:
 
-1. **Frontend (`khatabook-frontend`)**: A modern, responsive web application built with **Next.js** and React 19. It provides an intuitive UI for shopkeepers to manage customers, view ledgers, and interact with the AI assistant.
-2. **Backend API (`khatabook-api`)**: A powerful **NestJS** backend powered by **Prisma** and **PostgreSQL**. It handles all CRM operations, authentication, sales tracking, and ledger entries securely.
-3. **AI Voice Bot (`AIAssistant`)**: A **FastAPI** application utilizing **LangGraph**, **Ollama**, and **Sarvam AI** for Text-to-Speech (TTS) and Speech-to-Text (STT). It allows shopkeepers to query their shop data conversationally in English, Hindi, or Gujarati.
+| Service | Stack | Dev Port | Responsibility |
+| --- | --- | --- | --- |
+| **`khatabook-frontend`** | Next.js 16 (App Router), React 19, TypeScript | **3000** | Responsive CRM UI + the BizzChat AI Copilot |
+| **`khatabook-api`** | NestJS, Prisma, PostgreSQL | **3001** | Auth, customers, suppliers, products, sales, purchases, reports, payments, support tickets |
+| **`AIAssistant`** | FastAPI, LangGraph, Ollama, Sarvam AI | **8002** | Conversational agent with STT/TTS over the shop's data |
+
+The frontend talks to both backends through **Next.js proxy rewrites** (see `khatabook-frontend/next.config.ts`), so the browser only ever calls same-origin paths:
+
+- `/api/*` → `http://localhost:3001` (CRM API)
+- `/ai-api/*` → `http://localhost:8002` (AI Assistant)
 
 ---
 
 ## ✨ Key Features
 
-- 🗣️ **Multilingual Voice Assistant**: Speak naturally in Hindi, Gujarati, or English. The AI automatically detects the language and responds back with a spoken summary in the same language.
-- 📊 **Real-time CRM & Ledger**: Securely fetch, update, and manage customer ledgers, stock, and sales data using secure JWT-based API access.
-- ⚡ **High Performance**: Leveraging Next.js for lightning-fast frontend delivery and NestJS for reliable and scalable backend operations.
-- 🎨 **Modern UI**: Designed with an aesthetically pleasing, responsive interface tailored for ease of use.
+### 🤖 BizzChat — AI Copilot
+- **Always available**: a floating launcher in the bottom-right corner of every CRM page; the conversation persists as you navigate.
+- **Responsive by design**: a resizable 420×650 widget on desktop (drag the top-left grip to resize — your size is remembered) and a full-screen, safe-area-aware experience on mobile/tablet.
+- **Voice input**: Web Speech API speech-to-text with an EN / HI / GU language selector; auto-sends when you pause.
+- **Spoken replies (TTS)**: Sarvam AI audio with a browser-voice fallback, toggleable from the chat header.
+- **Rich answers**: structured cards for ledgers, invoices, sales summaries, and low-stock alerts.
+- **Quick actions**: one-tap prompts for today's sales, ledgers, low stock, and outstanding dues.
+
+### 🏢 CRM & Ledger
+- Secure JWT auth for shop owners (email/password + Google) and a separate customer login.
+- Manage customers, suppliers, products, sales, purchases, and payments.
+- Real-time ledgers, stock tracking, reports, and Excel export.
+- Built-in **support ticket** system (raise & track from the navbar).
+
+### 🎨 Platform
+- Lightweight, theme-aware UI (dark/light) built on CSS variables — no heavy UI framework.
+- High performance via Next.js (Turbopack) and a scalable NestJS backend with Redis caching.
 
 ---
 
 ## 🚀 Getting Started
 
-Follow the instructions below to set up each microservice locally. **Note: Ensure you do not commit any `.env` files with actual credentials to version control.**
+Set up each microservice locally. **Never commit `.env` files with real credentials.**
 
-### 1. KhataBook API (Backend)
-
-The backend is built with NestJS and Prisma.
+### 1. KhataBook API (Backend → port 3001)
 
 ```bash
 cd khatabook-api
-
-# Install dependencies
 npm install
 
-# Set up environment variables
+# Configure environment
 cp .env.example .env
 
-# Run Prisma migrations
+# Generate the Prisma client and sync the schema
+# NOTE: this project has no migration history — use db push, never `migrate dev`.
 npx prisma generate
 npx prisma db push
 
-# Start the development server
+# Start the dev server (watch mode)
 npm run start:dev
 ```
-*The API will run on `http://localhost:3000`.*
+*API runs on `http://localhost:3001` · Swagger docs at `http://localhost:3001/api`.*
 
-**Environment Variables (`khatabook-api/.env`):**
+**`khatabook-api/.env`:**
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/khatabook?schema=public"
 JWT_SECRET="your_secure_jwt_secret_here"
-PORT=3000
+PORT=3001
+# Optional: Redis cache
+REDIS_URL="redis://localhost:6379"
 ```
 
-### 2. KhataBook Frontend (Web UI)
-
-The frontend is a Next.js application.
+### 2. KhataBook Frontend (Web UI → port 3000)
 
 ```bash
 cd khatabook-frontend
-
-# Install dependencies
 npm install
-
-# Start the development server
 npm run dev
 ```
-*The web app will run on `http://localhost:3001` (or whichever port Next.js assigns).*
+*Web app runs on `http://localhost:3000`.*
 
-**Environment Variables (`khatabook-frontend/.env.local`):**
+The frontend proxies API and AI traffic in development, so it works out of the box with no env vars. Override only if your backends run elsewhere:
+
+**`khatabook-frontend/.env.local` (optional):**
 ```env
-NEXT_PUBLIC_API_URL="http://localhost:3000"
-NEXT_PUBLIC_AI_API_URL="http://localhost:8000"
+# Leave unset to use the built-in proxy (/api → :3001, /ai-api → :8002)
+# NEXT_PUBLIC_API_URL="http://localhost:3001"
 ```
 
-### 3. AI Assistant (Voice Bot)
+### 3. AI Assistant (Voice Bot → port 8002)
 
-The AI Voice Assistant requires Python 3.10+.
+Requires Python 3.10+.
 
 ```bash
 cd AIAssistant
 
-# Create a virtual environment
+# Create & activate a virtual environment
 python -m venv venv
+.\venv\Scripts\activate        # Windows
+# source venv/bin/activate     # macOS/Linux
 
-# Activate the virtual environment
-# On Windows:
-.\venv\Scripts\activate
-# On Mac/Linux:
-# source venv/bin/activate
-
-# Install requirements
 pip install -r requirements.txt
 
 # Start the FastAPI server
-uvicorn main:app --reload --host 0.0.0.0 --port 8002
+python main.py                 # serves on 0.0.0.0:8002 with reload
+# or: uvicorn main:app --reload --host 0.0.0.0 --port 8002
 ```
-*The AI server will run on `http://localhost:8002`.*
+*AI server runs on `http://localhost:8002`.*
 
-**Environment Variables (`AIAssistant/.env`):**
+**`AIAssistant/.env`:**
 ```env
 OLLAMA_MODEL="gemma4:31b-cloud"
 OLLAMA_BASE_URL="https://ollama.com/v1"
 OLLAMA_API_KEY="your_ollama_api_key_here"
-KHATABOOK_API_URL="http://localhost:3000"
+KHATABOOK_API_URL="http://localhost:3001"
 SARVAM_API_KEY="your_sarvam_api_key_here"
 ```
 
 ---
 
+## 🧭 Running the Full Stack
+
+Start all three services (each in its own terminal), then open **http://localhost:3000**:
+
+```bash
+# Terminal 1 — API
+cd khatabook-api && npm run start:dev
+
+# Terminal 2 — AI Assistant
+cd AIAssistant && python main.py
+
+# Terminal 3 — Frontend
+cd khatabook-frontend && npm run dev
+```
+
+Log in as a shop owner to reach the dashboard; the **BizzChat** launcher appears bottom-right on every page.
+
+---
+
 ## 🔒 Security Notice
 
-Please ensure that you **never hardcode or commit** API keys, database credentials, or JWT secrets to this repository. Always use `.env` files and keep them in your `.gitignore`.
+**Never hardcode or commit** API keys, database credentials, or JWT secrets. Always use `.env` files and keep them in `.gitignore`.

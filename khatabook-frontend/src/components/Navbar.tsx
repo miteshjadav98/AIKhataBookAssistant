@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SupportTicketModal from "@/components/ai/SupportTicketModal";
@@ -8,9 +8,16 @@ import SupportTicketModal from "@/components/ai/SupportTicketModal";
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
   const pathname = usePathname();
+  const moreRef = useRef<HTMLDivElement>(null);
+
+  const closeMenus = () => {
+    setMenuOpen(false);
+    setMoreOpen(false);
+  };
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -35,10 +42,25 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, [pathname]);
 
-  // Close menu on route change
+  // Close menus on route change
   useEffect(() => {
-    setMenuOpen(false);
+    const onNavigate = () => {
+      setMenuOpen(false);
+      setMoreOpen(false);
+    };
+    onNavigate();
   }, [pathname]);
+
+  // Close the desktop "More" dropdown when clicking outside it
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -73,18 +95,34 @@ export default function Navbar() {
         <nav className={`nav-links${menuOpen ? " nav-links--open" : ""}`}>
           {user?.role === "ADMIN" && (
             <>
-              <Link href="/dashboard" className="nav-link" onClick={() => setMenuOpen(false)}>Dashboard</Link>
-              <Link href="/customers" className="nav-link" onClick={() => setMenuOpen(false)}>Customers</Link>
-              <Link href="/suppliers" className="nav-link" onClick={() => setMenuOpen(false)}>Suppliers</Link>
-              <Link href="/products" className="nav-link" onClick={() => setMenuOpen(false)}>Products</Link>
-              <Link href="/sales" className="nav-link" onClick={() => setMenuOpen(false)}>Sales</Link>
-              <Link href="/purchases" className="nav-link" onClick={() => setMenuOpen(false)}>Purchases</Link>
-              <Link href="/reports" className="nav-link" onClick={() => setMenuOpen(false)}>Reports</Link>
-              <Link href="/ai" className="nav-link" onClick={() => setMenuOpen(false)} style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>🤖 AI Copilot</Link>
+              <Link href="/dashboard" className="nav-link" onClick={closeMenus}>Dashboard</Link>
+              <Link href="/customers" className="nav-link" onClick={closeMenus}>Customers</Link>
+              <Link href="/sales" className="nav-link" onClick={closeMenus}>Sales</Link>
+              <Link href="/products" className="nav-link" onClick={closeMenus}>Products</Link>
+
+              {/* Secondary links grouped to keep the bar uncluttered (flat on mobile) */}
+              <div className="nav-dropdown" ref={moreRef}>
+                <button
+                  type="button"
+                  className="nav-link nav-link--button nav-dropdown-toggle"
+                  onClick={() => setMoreOpen((o) => !o)}
+                  aria-expanded={moreOpen}
+                  aria-haspopup="true"
+                >
+                  More
+                  <i className={`fa-solid fa-chevron-down nav-dropdown-caret${moreOpen ? " nav-dropdown-caret--open" : ""}`}></i>
+                </button>
+                <div className={`nav-dropdown-menu${moreOpen ? " nav-dropdown-menu--open" : ""}`}>
+                  <Link href="/suppliers" className="nav-link" onClick={closeMenus}>Suppliers</Link>
+                  <Link href="/purchases" className="nav-link" onClick={closeMenus}>Purchases</Link>
+                  <Link href="/reports" className="nav-link" onClick={closeMenus}>Reports</Link>
+                </div>
+              </div>
+
               <button
                 type="button"
                 className="nav-link nav-link--button"
-                onClick={() => { setSupportOpen(true); setMenuOpen(false); }}
+                onClick={() => { setSupportOpen(true); closeMenus(); }}
               >
                 <i className="fa-solid fa-life-ring" style={{ marginRight: "0.4rem" }}></i>Support
               </button>
@@ -93,7 +131,17 @@ export default function Navbar() {
           {user?.type === "CUSTOMER" && (
             <Link href="/my-khata" className="nav-link" onClick={() => setMenuOpen(false)}>My Khata</Link>
           )}
-          
+
+          {/* Landing-page section links — only shown on the home page when not logged in */}
+          {pathname === "/" && !user && (
+            <>
+              <a href="#about" className="nav-link" onClick={() => setMenuOpen(false)}>About</a>
+              <a href="#features" className="nav-link" onClick={() => setMenuOpen(false)}>Features</a>
+              <a href="#ai-copilot" className="nav-link" onClick={() => setMenuOpen(false)}>AI Copilot</a>
+              <a href="#contact" className="nav-link" onClick={() => setMenuOpen(false)}>Contact</a>
+            </>
+          )}
+
           {!user ? (
             <div className="nav-auth-buttons">
               <Link href="/auth/login" className="btn-primary login-btn" onClick={() => setMenuOpen(false)}>Shop Login</Link>

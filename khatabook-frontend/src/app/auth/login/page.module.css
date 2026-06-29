@@ -1,11 +1,159 @@
-.container {
+/* ── Split-screen wrapper ─────────────────────────────── */
+.pageWrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: calc(100dvh - 70px);
+}
+
+/* ── Left branding panel ──────────────────────────────── */
+.leftPanel {
+  position: relative;
+  background: linear-gradient(140deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* subtle texture overlays */
+.leftPanel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(0, 0, 0, 0.25) 0%, transparent 55%),
+    radial-gradient(circle at 80% 15%, rgba(255, 255, 255, 0.12) 0%, transparent 45%);
+  pointer-events: none;
+}
+
+.leftPanel::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -30%;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.leftInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2.5rem;
+}
+
+.leftLogo {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: white;
+  text-decoration: none;
+  margin-bottom: auto;
+}
+
+.leftLogo span {
+  opacity: 0.85;
+}
+
+.leftBody {
+  margin-top: 3rem;
+  margin-bottom: 3rem;
+}
+
+.leftHeading {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.9rem;
+}
+
+.leftSubtext {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.75;
+  margin-bottom: 1.75rem;
+  max-width: 340px;
+}
+
+.leftFeatures {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.leftFeatures li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.featureIcon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.leftStats {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.leftStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.leftStatNum {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+.leftStatLabel {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.1rem;
+}
+
+.leftStatDivider {
+  width: 1px;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+/* ── Right form panel ─────────────────────────────────── */
+.rightPanel {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 80px);
   padding: 2rem;
+  background: var(--bg-primary);
+  overflow-y: auto;
 }
 
+/* ── Auth card ────────────────────────────────────────── */
 .authCard {
   width: 100%;
   max-width: 420px;
@@ -17,23 +165,23 @@
 
 .header {
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .title {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.9rem;
+  margin-bottom: 0.4rem;
 }
 
 .subtitle {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 0.93rem;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.2rem;
 }
 
 .inputGroup {
@@ -43,13 +191,13 @@
 }
 
 .label {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .input {
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 1rem;
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
@@ -57,16 +205,17 @@
   font-family: inherit;
   font-size: 1rem;
   transition: all var(--transition-fast);
+  width: 100%;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
 .submitBtn {
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   width: 100%;
 }
 
@@ -82,17 +231,39 @@
 
 .footer {
   text-align: center;
-  margin-top: 1rem;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--text-secondary);
 }
 
 .link {
   color: var(--accent-primary);
   font-weight: 500;
+  text-decoration: none;
 }
 
-/* ─── Google Sign-In ────────────────────────────────── */
+.link:hover {
+  text-decoration: underline;
+}
+
+.backHome {
+  text-align: center;
+}
+
+.backHomeLink {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: color var(--transition-fast);
+}
+
+.backHomeLink:hover {
+  color: var(--text-primary);
+}
+
+/* ── Google Sign-In ───────────────────────────────────── */
 .googleSection {
   display: flex;
   flex-direction: column;
@@ -107,15 +278,8 @@
   min-height: 44px;
 }
 
-/* Make Google's rendered iframe button fill the container */
-.googleBtnWrapper > div {
-  width: 100% !important;
-}
-
-.googleBtnWrapper iframe {
-  width: 100% !important;
-  border-radius: var(--radius-md) !important;
-}
+.googleBtnWrapper > div { width: 100% !important; }
+.googleBtnWrapper iframe { width: 100% !important; border-radius: var(--radius-md) !important; }
 
 .googleLoading {
   display: flex;
@@ -135,11 +299,9 @@
   animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── Divider ───────────────────────────────────────── */
+/* ── Divider ──────────────────────────────────────────── */
 .divider {
   display: flex;
   align-items: center;
@@ -156,10 +318,36 @@
 }
 
 .dividerText {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
   font-weight: 500;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .pageWrapper {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .leftPanel {
+    display: none;
+  }
+
+  .rightPanel {
+    padding: 2rem 1.25rem;
+    min-height: calc(100dvh - 70px);
+  }
+}
+
+@media (max-width: 480px) {
+  .authCard {
+    padding: 1.75rem 1.25rem;
+    gap: 1.25rem;
+  }
+
+  .title { font-size: 1.6rem; }
 }
