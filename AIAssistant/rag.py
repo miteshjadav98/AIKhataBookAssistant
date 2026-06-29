@@ -78,7 +78,7 @@ def _split(text: str) -> List[str]:
     try:
         from langchain_text_splitters import RecursiveCharacterTextSplitter
     except ImportError:  # older langchain layout
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        from langchain.text_splitter import RecursiveCharacterTextSplitter  # type: ignore
     splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     return splitter.split_text(text)
 
