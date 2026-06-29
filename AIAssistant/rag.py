@@ -42,7 +42,6 @@ def get_embeddings() -> OpenAIEmbeddings:
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     )
 
-
 # --------------------------------------------------------------------------- #
 # Vector store lifecycle
 # --------------------------------------------------------------------------- #
