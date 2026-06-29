@@ -387,7 +387,7 @@ export default function AIOperatingSystem() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="ai-title-container">
           <div style={{ fontSize: '2rem', cursor: 'pointer' }} onClick={() => router.push('/workspace')}>⬅️</div>
           <div className="ai-title">
-            <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>AI Khatabook Assistant</h2>
+            <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>BizzChat Assistant</h2>
             <span style={{ fontSize: '0.8rem', color: '#10b981' }}>● Online Copilot</span>
           </div>
         </div>

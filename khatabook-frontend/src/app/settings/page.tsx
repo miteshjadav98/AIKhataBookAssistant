@@ -369,7 +369,7 @@ export default function SettingsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {[
-                  { label: 'App Name', value: 'AI KhataBook' },
+                  { label: 'App Name', value: 'MitekOne' },
                   { label: 'Version', value: 'v1.0.0' },
                   { label: 'AI Engine', value: 'LangGraph + Gemini 2.0 Flash' },
                   { label: 'Voice Engine', value: 'Sarvam AI (Bulbul v3)' },

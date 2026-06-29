@@ -3,35 +3,35 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "KhataBook CRM — AI-Powered Business Management",
-    template: "%s | KhataBook CRM",
+    default: "MitekOne — AI-Powered CRM & Business Management Platform",
+    template: "%s | MitekOne",
   },
   description:
-    "KhataBook CRM helps businesses manage customers, track credit & payments, monitor inventory, and grow smarter with AI-powered insights. Start free today.",
+    "MitekOne helps businesses manage customers, track credit & payments, monitor inventory, and grow smarter with AI-powered insights. Start free today.",
   keywords: [
-    "KhataBook CRM",
+    "MitekOne",
     "business management",
     "AI CRM",
     "customer ledger",
     "payment tracking",
     "inventory management",
-    "khata book",
+    "business management platform",
     "Indian CRM",
     "Generative AI",
   ],
   authors: [{ name: "Mitesh Jadav" }],
   creator: "Mitesh Jadav",
   openGraph: {
-    title: "KhataBook CRM — AI-Powered Business Management",
+    title: "MitekOne — AI-Powered CRM & Business Management Platform",
     description:
       "Manage customers, track payments, and grow your business with AI-powered insights.",
     type: "website",
     locale: "en_IN",
-    siteName: "KhataBook CRM",
+    siteName: "MitekOne",
   },
   twitter: {
     card: "summary_large_image",
-    title: "KhataBook CRM — AI-Powered Business Management",
+    title: "MitekOne — AI-Powered CRM & Business Management Platform",
     description:
       "Manage customers, track payments, and grow your business with AI-powered insights.",
   },

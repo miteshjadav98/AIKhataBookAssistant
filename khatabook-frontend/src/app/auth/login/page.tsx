@@ -128,7 +128,7 @@ export default function LoginPage() {
       <div className={styles.leftPanel}>
         <div className={styles.leftInner}>
           <Link href="/" className={styles.leftLogo}>
-            Khata<span>Book</span>
+            Mitek<span>One</span>
           </Link>
           <div className={styles.leftBody}>
             <h2 className={styles.leftHeading}>

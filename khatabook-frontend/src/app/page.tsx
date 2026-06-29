@@ -4,9 +4,9 @@ import ContactForm from "@/components/ContactForm";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "KhataBook CRM — AI-Powered Business Management Platform",
+  title: "MitekOne — AI-Powered CRM & Business Management Platform",
   description:
-    "KhataBook CRM helps businesses manage customers, track credit & payments, monitor inventory, and grow smarter with AI. Start free today.",
+    "MitekOne helps businesses manage customers, track credit & payments, monitor inventory, and grow smarter with AI. Start free today.",
 };
 
 const FEATURES = [
@@ -70,7 +70,7 @@ export default function Home() {
               <span className="text-gradient">Smarter with AI</span>
             </h1>
             <p className={styles.heroSubtitle}>
-              KhataBook CRM combines the familiarity of a traditional khata book with
+              MitekOne combines the familiarity of a traditional ledger book with
               modern AI — manage customers, track payments, and grow your business with
               confidence.
             </p>
@@ -114,7 +114,7 @@ export default function Home() {
                   <span className={styles.dot} style={{ background: "#f59e0b" }} />
                   <span className={styles.dot} style={{ background: "#22c55e" }} />
                 </div>
-                <span className={styles.dashboardTitle}>KhataBook Dashboard</span>
+                <span className={styles.dashboardTitle}>MitekOne Dashboard</span>
               </div>
               <div className={styles.dashboardMetrics}>
                 <div className={styles.dashboardMetric}>
@@ -154,8 +154,8 @@ export default function Home() {
             Built for <span className="text-gradient">Indian Businesses</span>
           </h2>
           <p className={styles.sectionSubtitle}>
-            KhataBook CRM was born from a simple idea: every small business deserves enterprise-grade
-            tools without the complexity or cost. We combine traditional khata simplicity with modern AI.
+            MitekOne was born from a simple idea: every small business deserves enterprise-grade
+            tools without the complexity or cost. We combine traditional ledger simplicity with modern AI.
           </p>
           <div className={styles.aboutGrid}>
             {[
@@ -167,7 +167,7 @@ export default function Home() {
               {
                 icon: "🌟",
                 title: "Our Vision",
-                desc: "To become the most trusted CRM for Indian businesses — blending traditional khata simplicity with state-of-the-art AI capabilities.",
+                desc: "To become the most trusted CRM for Indian businesses — blending traditional ledger simplicity with state-of-the-art AI capabilities.",
               },
               {
                 icon: "💡",
@@ -219,7 +219,7 @@ export default function Home() {
                 <span className="text-gradient">Always On</span>
               </h2>
               <p className={styles.copilotDesc}>
-                The KhataBook Copilot understands your business data and
+                BizzChat, your MitekOne Copilot, understands your business data and
                 answers questions in plain language — no dashboards to navigate, no reports to
                 generate manually.
               </p>
@@ -284,7 +284,7 @@ export default function Home() {
           <span className={styles.sectionBadge}>Meet the Founder</span>
           <h2 className={styles.sectionTitle}>
             The Mind Behind{" "}
-            <span className="text-gradient">KhataBook CRM</span>
+            <span className="text-gradient">MitekOne</span>
           </h2>
           <div className={`${styles.founderCard} glass-panel`}>
             <div className={styles.founderAvatar}>MJ</div>
@@ -295,7 +295,7 @@ export default function Home() {
               </p>
               <p className={styles.founderBio}>
                 With 5+ years of experience building scalable backend systems and AI-powered
-                applications, Mitesh created KhataBook CRM to bridge the gap between
+                applications, Mitesh created MitekOne to bridge the gap between
                 traditional business practices and modern AI technology. His expertise in
                 Node.js, Python, Azure, and Generative AI enables him to build systems that
                 are both powerful and practical for everyday business needs.
@@ -405,10 +405,10 @@ export default function Home() {
           <div className={styles.footerTop}>
             <div className={styles.footerBrand}>
               <Link href="/" className={styles.footerLogo}>
-                Khata<span className="text-gradient">Book</span>
+                Mitek<span className="text-gradient">One</span>
               </Link>
               <p className={styles.footerTagline}>
-                AI-powered CRM for modern Indian businesses. Manage customers,
+                AI-Powered CRM &amp; Business Management Platform. Manage customers,
                 track payments, and grow smarter.
               </p>
               <div className={styles.footerSocials}>
@@ -469,7 +469,7 @@ export default function Home() {
 
           <div className={styles.footerBottom}>
             <p>
-              © {new Date().getFullYear()} KhataBook CRM. Built with ❤️ by{" "}
+              © {new Date().getFullYear()} MitekOne. Built with ❤️ by{" "}
               <strong>Mitesh Jadav</strong>.
             </p>
             <p>

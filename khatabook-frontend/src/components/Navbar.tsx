@@ -77,7 +77,7 @@ export default function Navbar() {
     <header className="navbar glass-panel">
       <div className="nav-container">
         <Link href="/" className="logo">
-          Khata<span className="text-gradient">Book</span>
+          Mitek<span className="text-gradient">One</span>
         </Link>
 
         {/* Hamburger button – visible only on mobile */}

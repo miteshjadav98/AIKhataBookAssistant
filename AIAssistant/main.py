@@ -1,5 +1,14 @@
 import os
+import sys
 from dotenv import load_dotenv
+
+# Force UTF-8 on stdout/stderr so logging agent responses that contain non-Latin1
+# characters (e.g. the ₹ rupee sign) doesn't crash on Windows' default cp1252 console.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
 
 load_dotenv()
 import json
@@ -22,7 +31,7 @@ import rag
 # Cap agent tool-call loops so a confused model can't spin indefinitely.
 AGENT_RECURSION_LIMIT = int(os.getenv("AGENT_RECURSION_LIMIT", "15"))
 
-app = FastAPI(title="KhataBook AI Assistant")
+app = FastAPI(title="MitekOne AI Assistant (BizzChat)")
 
 # Restrict CORS to known origins. Set CORS_ORIGINS as a comma-separated list, e.g.
 #   CORS_ORIGINS=https://app.miteklabs.tech

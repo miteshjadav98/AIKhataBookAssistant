@@ -28,7 +28,7 @@ async function bootstrap() {
   // Swagger is disabled in production to avoid exposing the full API surface publicly.
   if (!isProduction) {
     const config = new DocumentBuilder()
-      .setTitle('KhataBook CRM API')
+      .setTitle('MitekOne API')
       .setDescription('API for managing shop credit, customers, and transactions')
       .setVersion('1.0')
       .addBearerAuth()
