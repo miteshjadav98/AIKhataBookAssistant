@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🌟 AI KhataBook</h1>
+  <h1>🌟 MitekOne</h1>
   <p><strong>A Next-Generation CRM with an embedded AI Copilot for Shopkeepers</strong></p>
 </div>
 
@@ -14,7 +14,7 @@
 
 ## 📖 Overview
 
-**AI KhataBook** empowers local shopkeepers and small businesses with modern digital tools. It pairs a full-featured CRM and ledger system with **BizzChat**, an embedded AI Copilot that lets shopkeepers query and manage their business conversationally — by text or voice — in English, Hindi, or Gujarati.
+**MitekOne** empowers local shopkeepers and small businesses with modern digital tools. It pairs a full-featured CRM and ledger system with **BizzChat**, an embedded AI Copilot that lets shopkeepers query and manage their business conversationally — by text or voice — in English, Hindi, or Gujarati.
 
 ## 🏗️ Architecture
 
@@ -59,7 +59,7 @@ The frontend talks to both backends through **Next.js proxy rewrites** (see `kha
 
 Set up each microservice locally. **Never commit `.env` files with real credentials.**
 
-### 1. KhataBook API (Backend → port 3001)
+### 1. MitekOne API (Backend → port 3001)
 
 ```bash
 cd khatabook-api
@@ -87,7 +87,7 @@ PORT=3001
 REDIS_URL="redis://localhost:6379"
 ```
 
-### 2. KhataBook Frontend (Web UI → port 3000)
+### 2. MitekOne Frontend (Web UI → port 3000)
 
 ```bash
 cd khatabook-frontend
